@@ -27,6 +27,14 @@ User-facing setup steps: see `SETUP.txt`.
   introduce React, Vite, Tailwind, TypeScript or a bundler.
 - **No search bar, notification bell or avatar.** These were in the reference
   mockup and were cut on purpose — single-user app, nothing to notify.
+- **Auth fails closed.** With no `DASHBOARD_PASSWORD` set, `/api/dashboard` is
+  served only to a loopback caller. Anything else gets a 503. Do not "simplify"
+  this back to `if (!DASHBOARD_PASSWORD) return next()` — that shipped, and the
+  first Railway deploy served the dashboard to the internet with no login while
+  `/api/login` still returned 401 for a wrong password, so the gate looked
+  fine. The guard must not key on `NODE_ENV` alone either: that deploy had
+  `NODE_ENV` unset too, so a production-only check would have been disabled by
+  the same missing configuration it exists to catch.
 - **Phase 1 scope is calendar + tasks + notes.** Market Watch and News are
   phase 2 and should not be built until asked.
 

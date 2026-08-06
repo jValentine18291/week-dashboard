@@ -54,7 +54,13 @@ What has been verified:
 
 What has not been verified:
 
-- Deployment on Railway
+- **A working Railway deployment.** The service is up at
+  `week-dashboard-production.up.railway.app` and serves the app shell, but no
+  environment variables have been set on it: no password, no calendar feed, no
+  Notion credentials. It therefore returns an empty dashboard. Nothing has
+  leaked, because there is nothing configured to leak — but see below.
+- Whether Railway auto-deploys on push. Two commits sat unpicked-up for several
+  minutes, so the GitHub connection may not be watching `main`.
 - A real calendar day busy enough to stress the week view — only mocked; the
   user's own calendar still has no day like this
 - The month grid's `ResizeObserver` re-fit. The capacity logic it calls is

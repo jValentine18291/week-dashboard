@@ -19,6 +19,7 @@ const PORT = process.env.PORT || 3000;
 
 const COOKIE_SECRET = process.env.COOKIE_SECRET || 'change-me-in-env';
 const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || '';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 const notionConfig = {
   token: process.env.NOTION_TOKEN,
@@ -40,8 +41,19 @@ app.use(express.urlencoded({ extended: false }));
 
 // --- auth -------------------------------------------------------------
 
+// A missing password means "open" — which is a convenience on localhost and a
+// data leak on a public URL. Deployed, it is treated as a misconfiguration and
+// refused rather than waved through: the failure mode of an unset variable must
+// not be "serve everything to everyone". Fails closed on purpose.
 function requireAuth(req, res, next) {
-  if (!DASHBOARD_PASSWORD) return next(); // no password set: open (local dev only)
+  if (!DASHBOARD_PASSWORD) {
+    if (IS_PRODUCTION) {
+      return res.status(503).json({
+        error: 'DASHBOARD_PASSWORD is not set. Refusing to serve data unprotected.',
+      });
+    }
+    return next(); // local dev only
+  }
   if (req.signedCookies && req.signedCookies.session === 'ok') return next();
   return res.status(401).json({ error: 'unauthorised' });
 }
@@ -62,9 +74,11 @@ app.post('/api/login', (req, res) => {
 });
 
 app.get('/api/session', (req, res) => {
-  const open = !DASHBOARD_PASSWORD;
+  // Only unprotected off-production; deployed, a missing password is refused.
+  const open = !DASHBOARD_PASSWORD && !IS_PRODUCTION;
+  const misconfigured = !DASHBOARD_PASSWORD && IS_PRODUCTION;
   const signedIn = open || req.signedCookies?.session === 'ok';
-  res.json({ signedIn, open });
+  res.json({ signedIn, open, misconfigured });
 });
 
 // --- dashboard --------------------------------------------------------
@@ -143,4 +157,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.listen(PORT, () => {
   console.log(`Dashboard running on port ${PORT} (timezone ${process.env.TZ})`);
+  if (!DASHBOARD_PASSWORD) {
+    console[IS_PRODUCTION ? 'error' : 'warn'](
+      IS_PRODUCTION
+        ? 'REFUSING TO SERVE DATA: DASHBOARD_PASSWORD is not set. Set it in the ' +
+          'host\'s environment variables, then redeploy.'
+        : 'No DASHBOARD_PASSWORD set — running open. Local development only.'
+    );
+  }
 });

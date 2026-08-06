@@ -52,15 +52,24 @@ What has been verified:
   uses Notion's built-in options, and `Done` matches `NOTION_DONE_VALUES`
   as shipped.
 
+- **Railway deployment**, at `week-dashboard-production.up.railway.app`. All
+  eight variables set, running on port 8080 with the timezone pinned to
+  Asia/Singapore (confirmed in the startup log — the server would otherwise
+  default to UTC, which is the one environmental difference that could break
+  every date calculation in `lib/week.js`). Verified after deploy:
+  `/api/session` reports `open:false`, `/api/dashboard` returns 401 without a
+  session, and a wrong password is rejected.
+
 What has not been verified:
 
-- **A working Railway deployment.** The service is up at
-  `week-dashboard-production.up.railway.app` and serves the app shell, but no
-  environment variables have been set on it: no password, no calendar feed, no
-  Notion credentials. It therefore returns an empty dashboard. Nothing has
-  leaked, because there is nothing configured to leak — but see below.
-- Whether Railway auto-deploys on push. Two commits sat unpicked-up for several
-  minutes, so the GitHub connection may not be watching `main`.
+- **Railway does not auto-deploy on push.** Four commits sat unpicked-up, and
+  adding environment variables does not restart the service on its own. After
+  any push or variable change, redeploy manually from the Deployments tab, then
+  re-check `/api/session` — a stale container is indistinguishable from a
+  working one until you look at that endpoint.
+- The rendered dashboard on the deployed instance. It runs the same commit whose
+  output was checked line-by-line against the raw `.ics` locally, but that is an
+  inference, not an observation: the data sits behind the password gate.
 - A real calendar day busy enough to stress the week view — only mocked; the
   user's own calendar still has no day like this
 - The month grid's `ResizeObserver` re-fit. The capacity logic it calls is

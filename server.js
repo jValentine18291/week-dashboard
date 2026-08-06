@@ -41,13 +41,25 @@ app.use(express.urlencoded({ extended: false }));
 
 // --- auth -------------------------------------------------------------
 
-// A missing password means "open" — which is a convenience on localhost and a
-// data leak on a public URL. Deployed, it is treated as a misconfiguration and
-// refused rather than waved through: the failure mode of an unset variable must
-// not be "serve everything to everyone". Fails closed on purpose.
+// Loopback only. Deliberately does not consult X-Forwarded-For: that header is
+// caller-supplied, so trusting it would let anyone claim to be local.
+function isLoopback(req) {
+  const ip = (req.ip || req.socket?.remoteAddress || '').replace(/^::ffff:/, '');
+  return ip === '127.0.0.1' || ip === '::1';
+}
+
+// A missing password means "open" — a convenience on localhost and a data leak
+// on a public URL. Anything not arriving over loopback is refused rather than
+// waved through: the failure mode of an unset variable must not be "serve
+// everything to everyone". Fails closed on purpose.
+//
+// The check is NOT keyed on NODE_ENV alone. The first Railway deploy had
+// neither DASHBOARD_PASSWORD nor NODE_ENV set, so a production-only guard would
+// itself have been disabled by the same missing configuration it exists to
+// catch. Where the request came from cannot be left unset.
 function requireAuth(req, res, next) {
   if (!DASHBOARD_PASSWORD) {
-    if (IS_PRODUCTION) {
+    if (IS_PRODUCTION || !isLoopback(req)) {
       return res.status(503).json({
         error: 'DASHBOARD_PASSWORD is not set. Refusing to serve data unprotected.',
       });
@@ -74,9 +86,10 @@ app.post('/api/login', (req, res) => {
 });
 
 app.get('/api/session', (req, res) => {
-  // Only unprotected off-production; deployed, a missing password is refused.
-  const open = !DASHBOARD_PASSWORD && !IS_PRODUCTION;
-  const misconfigured = !DASHBOARD_PASSWORD && IS_PRODUCTION;
+  // Mirrors requireAuth: open only for a loopback caller with no password set.
+  const unprotected = !DASHBOARD_PASSWORD;
+  const open = unprotected && !IS_PRODUCTION && isLoopback(req);
+  const misconfigured = unprotected && !open;
   const signedIn = open || req.signedCookies?.session === 'ok';
   res.json({ signedIn, open, misconfigured });
 });

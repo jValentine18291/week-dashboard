@@ -1,0 +1,701 @@
+:root {
+  --bg: #f6f8fb;
+  --card: #ffffff;
+  --border: #e6e9f0;
+  --hair: #eef1f6;
+  --ink: #111827;
+  --ink-2: #6b7280;
+  --ink-3: #9ca3af;
+  --blue: #2563eb;
+  --blue-soft: #eff4ff;
+  --red: #dc2626;
+
+  --radius: 12px;
+  --gap: 12px;
+  --gutter: 52px;
+  --hour-h: 52px;
+}
+
+* { box-sizing: border-box; }
+
+/* Class-level display rules outrank the browser's [hidden] rule, so make
+   hidden win explicitly. Without this the login gate renders behind the app. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The dashboard is a fixed-height shell, not a document: the page itself never
+   scrolls, and each panel is responsible for its own overflow. */
+body { overflow: hidden; }
+
+#app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+button { font-family: inherit; }
+
+/* ---------- login ---------- */
+
+.gate { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+
+.gate-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.05);
+  padding: 32px;
+  width: 340px;
+}
+
+.gate-title { font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+.gate-sub { color: var(--ink-2); margin: 4px 0 20px; font-size: 13px; }
+
+#password {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+#password:focus-visible,
+button:focus-visible,
+.wk-item:focus-visible,
+.ev:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--blue);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-primary:hover { background: #1d4ed8; }
+
+.gate-error { color: var(--red); font-size: 13px; margin: 12px 0 0; min-height: 18px; }
+
+/* ---------- top bar ---------- */
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 20px 10px;
+}
+
+.greeting { font-size: 19px; font-weight: 700; margin: 0; letter-spacing: -0.02em; }
+.topbar-date { color: var(--ink-2); margin: 2px 0 0; font-size: 13px; }
+
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.stamp { font-size: 12px; color: var(--ink-3); }
+
+.btn-ghost {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+.btn-ghost:hover { color: var(--ink); border-color: var(--ink-3); }
+
+/* ---------- layout ---------- */
+
+/* The calendar row takes whatever height is left over; notes keep their
+   natural height and the tasks column spans both. */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "cal   week"
+    "notes week";
+  gap: var(--gap);
+  padding: 0 20px 16px;
+  min-height: 0;
+}
+
+.card-calendar { grid-area: cal; }
+.card-week { grid-area: week; }
+.card-notes { grid-area: notes; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px 10px;
+  flex: 0 0 auto;
+}
+
+.card-head-right { display: flex; align-items: center; gap: 10px; }
+
+/* ---------- month / week toggle ---------- */
+
+.viewtoggle {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.vt {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-2);
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.vt:hover { color: var(--ink); }
+.vt.is-active { background: var(--card); color: var(--blue); font-weight: 600; box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06); }
+
+.card-head-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.card-title { font-size: 16px; font-weight: 700; margin: 0; letter-spacing: -0.015em; }
+.card-meta { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+
+.card-icon {
+  width: 27px; height: 27px;
+  border-radius: 8px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.card-icon svg { width: 16px; height: 16px; display: block; }
+
+/* One tint per panel, so the three sections are told apart at a glance rather
+   than by reading. Values are reused from the pill palette, not invented. */
+.icon-cal   { background: #e8f0fe; color: #1967d2; }
+.icon-week  { background: #ede9fe; color: #6d28d9; }
+.icon-notes { background: #fef3c7; color: #b45309; }
+
+.card-error {
+  margin: 0;
+  padding: 12px 18px;
+  font-size: 13px;
+  color: var(--red);
+  background: #fef2f2;
+  border-top: 1px solid var(--border);
+}
+
+/* ---------- calendar ---------- */
+
+/* Both views fill whatever the card has left. min-height:0 is what actually
+   lets them shrink inside the grid rather than pushing the page taller. */
+.cal { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* ---------- month view ---------- */
+
+.mon-daybar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.mon-dayname {
+  text-align: center;
+  padding: 5px 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.mon-grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.mon-cell {
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--hair);
+  border-top: 1px solid var(--hair);
+  padding: 2px 3px 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mon-cell:nth-child(7n + 1) { border-left: none; }
+.mon-grid > .mon-cell:nth-child(-n + 7) { border-top: none; }
+
+.mon-cell.is-outside { background: #fafbfd; }
+.mon-cell.is-outside .mon-num { color: var(--ink-3); }
+.mon-cell.is-today { background: rgba(37, 99, 235, 0.04); }
+
+.mon-num {
+  align-self: flex-start;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  line-height: 1;
+  padding: 3px 4px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.mon-cell.is-today .mon-num {
+  background: var(--blue);
+  color: #fff;
+  min-width: 17px;
+  text-align: center;
+}
+
+.mon-events {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 2px;
+  overflow: hidden;
+}
+
+.mon-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1.45;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.mon-chip:hover { background: rgba(17, 24, 39, 0.05); }
+.mon-chip.is-allday { font-weight: 600; }
+.mon-chip.is-allday:hover { filter: brightness(0.96); }
+
+.mon-dot { width: 5px; height: 5px; border-radius: 50%; flex: 0 0 5px; }
+.mon-when { flex: 0 0 auto; opacity: 0.85; font-variant-numeric: tabular-nums; }
+
+.mon-what,
+.mon-chip.is-allday {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mon-what { font-weight: 500; color: var(--ink); min-width: 0; }
+
+.mon-more {
+  font-size: 10px;
+  color: var(--ink-3);
+  padding: 0 4px;
+  flex: 0 0 auto;
+}
+
+/* ---------- week view ---------- */
+
+.cal-daybar { display: flex; border-bottom: 1px solid var(--border); flex: 0 0 auto; }
+
+.cal-gutter-head {
+  width: var(--gutter);
+  flex: 0 0 var(--gutter);
+  font-size: 10px;
+  color: var(--ink-3);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
+.cal-days {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.cal-dayhead { text-align: center; padding: 8px 4px 10px; }
+
+.cal-dayname {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+}
+
+.cal-daynum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  margin-top: 3px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  border-radius: 50%;
+}
+
+.cal-dayhead.is-today .cal-daynum { background: var(--blue); color: #fff; }
+.cal-dayhead.is-today .cal-dayname { color: var(--blue); }
+
+.cal-allday {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: #fbfcfe;
+  flex: 0 0 auto;
+}
+
+.cal-allday-label {
+  width: var(--gutter);
+  flex: 0 0 var(--gutter);
+  font-size: 10px;
+  color: var(--ink-3);
+  padding: 7px 4px 0;
+  text-align: right;
+}
+
+.cal-allday-cols {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  padding: 5px 2px;
+}
+
+.cal-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 8px 0 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.cal-gutter { width: var(--gutter); flex: 0 0 var(--gutter); position: relative; }
+
+.cal-hourlabel {
+  position: absolute;
+  right: 8px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.cal-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  position: relative;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--hair) 0, var(--hair) 1px,
+    transparent 1px, transparent var(--hour-h)
+  );
+}
+
+.cal-col { position: relative; border-left: 1px solid var(--hair); min-width: 0; }
+.cal-col:first-child { border-left: none; }
+.cal-col.is-today { background: rgba(37, 99, 235, 0.025); }
+
+.ev {
+  position: absolute;
+  border: none;
+  border-left: 3px solid;
+  border-radius: 4px;
+  padding: 3px 5px;
+  font-family: inherit;
+  font-size: 11px;
+  text-align: left;
+  overflow: hidden;
+  cursor: pointer;
+  display: block;
+}
+
+.ev:hover { filter: brightness(0.97); z-index: 5; }
+
+.ev-time { display: block; font-size: 10px; opacity: 0.85; line-height: 1.3; }
+.ev-title {
+  display: block;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev-allday {
+  border-radius: 4px;
+  border: none;
+  border-left: 3px solid;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.nowline {
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: var(--red);
+  z-index: 6;
+  pointer-events: none;
+}
+
+.nowline::before {
+  content: '';
+  position: absolute;
+  left: -4px; top: -3px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--red);
+}
+
+.cal-empty { padding: 40px 18px; text-align: center; color: var(--ink-3); font-size: 13px; }
+
+/* ---------- this week ---------- */
+
+.progress-wrap { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.progress-label { font-size: 11px; color: var(--ink-2); }
+
+.progress-track {
+  width: 74px; height: 5px;
+  background: #e8ecf3;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill { display: block; height: 100%; width: 0%; background: var(--blue); border-radius: 3px; transition: width 300ms ease; }
+.progress-pct { font-size: 12px; font-weight: 600; color: var(--ink); min-width: 30px; text-align: right; }
+
+.filters { display: flex; gap: 6px; padding: 0 14px 9px; flex: 0 0 auto; }
+
+.chip {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 11px;
+  cursor: pointer;
+}
+
+.chip:hover { border-color: var(--ink-3); }
+.chip.is-active { background: var(--blue-soft); border-color: transparent; color: var(--blue); font-weight: 600; }
+.chip-n { opacity: 0.75; margin-left: 3px; }
+
+/* Still scrolls internally — a full week of merged tasks and events will always
+   be able to outrun the column. It scrolls inside the card so the page can't. */
+.week-list {
+  border-top: 1px solid var(--hair);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.wk-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--hair);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.wk-item:last-child { border-bottom: none; }
+.wk-item:hover { background: #f9fafc; }
+
+.box {
+  width: 16px; height: 16px;
+  flex: 0 0 16px;
+  margin-top: 2px;
+  border: 1.5px solid #cbd2dd;
+  border-radius: 4px;
+  position: relative;
+  background: #fff;
+}
+
+.wk-item.is-done .box { background: var(--blue); border-color: var(--blue); }
+
+.wk-item.is-done .box::after {
+  content: '';
+  position: absolute;
+  left: 4.5px; top: 1.5px;
+  width: 4px; height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.box.is-event { border-radius: 50%; border-style: solid; }
+
+.wk-main { flex: 1; min-width: 0; }
+
+.wk-title { font-size: 13.5px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+.wk-item.is-done .wk-title { color: var(--ink-2); }
+
+/* Right-aligned so dates form a scannable column down the list. */
+.wk-when {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.wk-date {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.wk-note { display: block; font-size: 10.5px; color: var(--ink-3); margin-top: 1px; }
+
+.wk-item.is-done .wk-date { color: var(--ink-2); font-weight: 500; }
+.wk-when.is-overdue .wk-date,
+.wk-when.is-overdue .wk-note { color: var(--red); }
+
+.pill {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 5px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.pill-high { background: #fee2e2; color: #b91c1c; }
+.pill-medium { background: #fef3c7; color: #b45309; }
+.pill-low { background: #dbeafe; color: #1d4ed8; }
+.pill-done { background: #dcfce7; color: #15803d; }
+.pill-event { background: #ede9fe; color: #6d28d9; }
+
+.wk-detail {
+  padding: 0 14px 10px 39px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--hair);
+}
+
+.wk-detail p { margin: 0 0 3px; }
+.wk-detail a { color: var(--blue); text-decoration: none; }
+.wk-detail a:hover { text-decoration: underline; }
+
+/* ---------- notes ---------- */
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 9px;
+  padding: 2px 14px 14px;
+}
+
+.note {
+  display: block;
+  text-decoration: none;
+  border-radius: 9px;
+  padding: 10px 11px;
+  min-height: 74px;
+  border: 1px solid transparent;
+  transition: transform 120ms ease;
+}
+
+.note:hover { transform: translateY(-2px); }
+
+.note-title { font-size: 13px; font-weight: 600; line-height: 1.35; margin-bottom: 6px; }
+.note-tags { font-size: 11px; opacity: 0.75; margin-bottom: 8px; }
+.note-date { font-size: 11px; opacity: 0.6; }
+
+.empty { padding: 18px 14px; font-size: 12.5px; color: var(--ink-3); }
+
+/* Single fallback for narrow windows (see CLAUDE.md — below 1180px is out of
+   scope). The one-screen layout is abandoned here rather than half-applied:
+   stacked panels genuinely need the page to scroll. */
+@media (max-width: 1180px) {
+  body { overflow: auto; }
+
+  #app { height: auto; }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas: "cal" "week" "notes";
+  }
+
+  .cal-month { min-height: 460px; }
+  .week-list { max-height: 420px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill, .note { transition: none; }
+}

@@ -1,0 +1,109 @@
+WEEK DASHBOARD — QUICK SETUP
+============================
+
+Full detail is in README.md. This card is the short version.
+
+A note on hidden files: the config file is called ".env" and files starting
+with a dot are hidden by default in both Finder and Windows Explorer. That is
+why the commands below create and edit it from the Terminal instead.
+
+
+STEP 0 — check you have Node.js
+-------------------------------
+Open Terminal and run:
+
+    node --version
+
+If you see v20 or higher, continue. If you see "command not found",
+install Node from https://nodejs.org first (take the LTS version).
+
+
+STEP 1 — get into the folder
+----------------------------
+Unzip week-dashboard.zip, then in Terminal:
+
+    cd /path/to/week-dashboard
+
+Tip: type "cd " (with the space), then drag the unzipped folder from
+Finder into the Terminal window. It fills in the path for you.
+
+
+STEP 2 — install
+----------------
+    npm install
+
+
+STEP 3 — create your config file
+--------------------------------
+    cp .env.example .env
+    nano .env
+
+Fill in these three lines first and leave the Notion ones blank for now:
+
+    DASHBOARD_PASSWORD=       <- any password you will remember
+    COOKIE_SECRET=            <- mash the keyboard, 30+ characters
+    GOOGLE_CALENDAR_ICS_URL=  <- see step 4
+
+In nano: edit normally, then Ctrl+O and Enter to save, Ctrl+X to exit.
+
+
+STEP 4 — get your Google Calendar URL
+-------------------------------------
+1. Open Google Calendar on a computer
+2. Hover your calendar in the left sidebar, click the three dots
+3. Settings and sharing
+4. Scroll to "Integrate calendar"
+5. Copy "Secret address in iCal format"
+
+Treat that URL like a password. Anyone who has it can read your calendar.
+If it ever leaks, click Reset on that same page.
+
+
+STEP 5 — run it
+---------------
+    npm start
+
+Open http://localhost:3000 in your browser and enter your password.
+
+You should see your real calendar as a month grid. "This Week" and "Notes"
+will be empty at this stage — that is correct. Stop here and confirm the
+calendar looks right.
+
+Use the Month / Week buttons in the calendar header to switch views. Check
+the Week view too, especially on a day with overlapping meetings — that is
+the layout most likely to look wrong.
+
+The whole dashboard is meant to fit one screen with no scrolling. If the
+page scrolls, say so; it is sized for a 1920x1080 monitor.
+
+To stop the server, press Ctrl+C in the Terminal.
+
+
+STEP 6 — add Notion (only after step 5 works)
+---------------------------------------------
+1. Go to notion.so/my-integrations, create a new INTERNAL integration,
+   copy the secret
+2. In your Tasks database and your Notes database:
+   ... menu > Connections > add that integration
+3. In each database:
+   ... menu > Database settings > Manage data sources > ... > Copy data source ID
+   (this is the DATA SOURCE id, not the database id)
+4. Add NOTION_TOKEN, NOTION_TASKS_DATA_SOURCE_ID and
+   NOTION_NOTES_DATA_SOURCE_ID to your .env
+5. Ctrl+C to stop the server, then npm start again
+
+Your Tasks database should have columns named Due, Status and Area.
+Priority is optional and drives the coloured pills.
+If your columns are named differently, do not rename them — set the
+NOTION_*_PROPERTY lines in .env instead.
+
+
+STEP 7 — put it online (only after step 6 works)
+------------------------------------------------
+1. Push this folder to a GitHub repo
+2. railway.com > New Project > Deploy from GitHub repo
+3. Variables tab > add every line from your .env
+4. Also add NODE_ENV=production
+5. Settings > Networking > Generate Domain
+
+Never commit your .env file. The included .gitignore already excludes it.

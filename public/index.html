@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+<div id="gate" class="gate" hidden>
+  <div class="gate-card">
+    <h1 class="gate-title">Dashboard</h1>
+    <p class="gate-sub">Enter your password to continue.</p>
+    <input id="password" type="password" autocomplete="current-password" spellcheck="false" placeholder="Password">
+    <button id="signin" class="btn-primary" type="button">Open dashboard</button>
+    <p id="gate-error" class="gate-error" role="alert"></p>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <header class="topbar">
+    <div>
+      <h1 id="greeting" class="greeting">Good morning</h1>
+      <p id="today-date" class="topbar-date">&nbsp;</p>
+    </div>
+    <div class="topbar-right">
+      <span id="stamp" class="stamp">&nbsp;</span>
+      <button id="refresh" class="btn-ghost" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <section class="card card-calendar" aria-labelledby="h-cal">
+      <div class="card-head">
+        <div class="card-head-left">
+          <span class="card-icon icon-cal" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+              <path d="M3 10h18M8 3v4M16 3v4"></path>
+            </svg>
+          </span>
+          <h2 id="h-cal" class="card-title">Google Calendar</h2>
+        </div>
+        <div class="card-head-right">
+          <span id="cal-range" class="card-meta"></span>
+          <div class="viewtoggle" id="viewtoggle" role="group" aria-label="Calendar view">
+            <button class="vt" data-view="month" type="button">Month</button>
+            <button class="vt" data-view="week" type="button">Week</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cal cal-month" id="cal-month" hidden>
+        <div class="mon-daybar" id="mon-daybar"></div>
+        <div class="mon-grid" id="mon-grid"></div>
+      </div>
+
+      <div class="cal cal-week" id="cal-week" hidden>
+        <div class="cal-daybar">
+          <div class="cal-gutter-head" id="tz-label"></div>
+          <div class="cal-days" id="cal-days"></div>
+        </div>
+        <div class="cal-allday" id="cal-allday" hidden></div>
+        <div class="cal-body">
+          <div class="cal-gutter" id="cal-gutter"></div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+      </div>
+      <p id="calendar-error" class="card-error" hidden></p>
+    </section>
+
+    <section class="card card-week" aria-labelledby="h-week">
+      <div class="card-head">
+        <div class="card-head-left">
+          <span class="card-icon icon-week" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3.5 7.5l2 2 3.5-3.5"></path>
+              <path d="M3.5 17.5l2 2 3.5-3.5"></path>
+              <path d="M13 7h7.5M13 18h7.5"></path>
+            </svg>
+          </span>
+          <h2 id="h-week" class="card-title">This Week</h2>
+        </div>
+        <div class="progress-wrap">
+          <span class="progress-label">Progress</span>
+          <span class="progress-track"><span id="progress-fill" class="progress-fill"></span></span>
+          <span id="progress-pct" class="progress-pct">0%</span>
+        </div>
+      </div>
+      <div class="filters" id="filters" role="tablist">
+        <button class="chip is-active" data-filter="all" role="tab" type="button">All <span class="chip-n" id="n-all">0</span></button>
+        <button class="chip" data-filter="task" role="tab" type="button">Tasks <span class="chip-n" id="n-task">0</span></button>
+        <button class="chip" data-filter="event" role="tab" type="button">Events <span class="chip-n" id="n-event">0</span></button>
+      </div>
+      <div id="week-list" class="week-list"></div>
+      <p id="tasks-error" class="card-error" hidden></p>
+    </section>
+
+    <section class="card card-notes" aria-labelledby="h-notes">
+      <div class="card-head">
+        <div class="card-head-left">
+          <span class="card-icon icon-notes" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 3h8l6 6v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"></path>
+              <path d="M13 3v6h6"></path>
+              <path d="M8 13.5h7M8 17.5h4.5"></path>
+            </svg>
+          </span>
+          <h2 id="h-notes" class="card-title">Notes</h2>
+        </div>
+        <span id="notes-meta" class="card-meta"></span>
+      </div>
+      <div id="notes" class="notes-grid"></div>
+      <p id="notes-error" class="card-error" hidden></p>
+    </section>
+
+  </main>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

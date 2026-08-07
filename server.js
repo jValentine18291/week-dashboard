@@ -245,7 +245,23 @@ app.post('/api/chat', requireAuth, async (req, res) => {
 
 app.get('/healthz', (req, res) => {
   const sha = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || '').slice(0, 7);
-  res.type('text/plain').send(sha ? `ok ${sha}` : 'ok');
+
+  // Which subsystems the container actually has configuration for. Booleans
+  // and a public hostname only — never a key, never a URL with a secret in it.
+  // "Is the variable live?" was otherwise unanswerable from outside, and a
+  // container with stale env looks identical to a correct one.
+  const host = (() => {
+    try { return new URL(chatConfig.baseUrl).host; } catch (e) { return 'invalid'; }
+  })();
+  const parts = [
+    sha ? `ok ${sha}` : 'ok',
+    `calendar=${process.env.GOOGLE_CALENDAR_ICS_URL ? 'set' : 'unset'}`,
+    `notion=${process.env.NOTION_TOKEN ? 'set' : 'unset'}`,
+    `chat=${chatConfig.apiKey ? 'set' : 'unset'}`,
+    `chat_host=${chatConfig.apiKey ? host : '-'}`,
+    `chat_model=${chatConfig.apiKey ? chatConfig.model : '-'}`,
+  ];
+  res.type('text/plain').send(parts.join(' '));
 });
 
 app.use(express.static(path.join(__dirname, 'public')));

@@ -17,6 +17,11 @@
   --glow-soft: 0 0 0 1px rgba(45, 212, 255, 0.06), 0 0 24px rgba(34, 211, 238, 0.06);
   --glow-edge: 0 0 12px rgba(34, 211, 238, 0.35);
 
+  /* HUD corner brackets */
+  --bracket: rgba(34, 211, 238, 0.95);
+  --bracket-arm: 17px;
+  --bracket-w: 2px;
+
   --radius: 12px;
   --gap: 12px;
   --gutter: 52px;
@@ -71,14 +76,16 @@ body {
 /* Only controls that do something. The reference mockup had ten nav items for
    pages that do not exist in a single-page app; dead links read as broken. */
 .rail {
+  position: relative;
   grid-area: rail;
   width: 164px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 14px 12px 16px;
-  border-right: 1px solid var(--border);
+  padding: 14px 16px 16px;
+  border-right: 1px solid rgba(34, 211, 238, 0.28);
   background: linear-gradient(180deg, rgba(10, 20, 36, 0.9), rgba(5, 10, 20, 0.9));
+  box-shadow: 6px 0 26px rgba(34, 211, 238, 0.07);
 }
 
 .rail-brand {
@@ -146,8 +153,9 @@ button { font-family: inherit; }
 .gate { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
 
 .gate-card {
+  position: relative;
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(34, 211, 238, 0.28);
   border-radius: var(--radius);
   box-shadow: var(--glow-soft), 0 18px 50px rgba(0, 0, 0, 0.55);
   padding: 32px;
@@ -262,10 +270,15 @@ button:focus-visible,
 .card-notes { grid-area: notes; }
 
 .card {
+  position: relative;
   background: var(--card);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(34, 211, 238, 0.28);
   border-radius: var(--radius);
-  box-shadow: var(--glow-soft), 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    inset 0 0 22px rgba(34, 211, 238, 0.05),
+    0 0 0 1px rgba(34, 211, 238, 0.06),
+    0 0 26px rgba(34, 211, 238, 0.12),
+    0 10px 30px rgba(0, 0, 0, 0.5);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -273,13 +286,40 @@ button:focus-visible,
   flex-direction: column;
 }
 
-/* A brighter seam along the top edge, so each panel reads as lit from above. */
+/* A brighter seam along the top edge, so each panel reads as lit from above.
+   Absolutely positioned rather than a flex item: it should not consume a row
+   of the card's height, and ::after is needed for the corner brackets. */
 .card::before {
   content: '';
-  display: block;
+  position: absolute;
+  top: 0; left: 12%; right: 12%;
   height: 1px;
-  flex: 0 0 1px;
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.55), transparent);
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.75), transparent);
+}
+
+/* HUD corner brackets. Eight gradients — two arms per corner — painted into a
+   single pseudo-element, so no extra DOM. Inset slightly so the square arms
+   sit inside the card's rounded corner instead of fighting the curve. */
+.card::after,
+.rail::after,
+.gate-card::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--bracket), var(--bracket)) left  top    / var(--bracket-arm) var(--bracket-w) no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) left  top    / var(--bracket-w) var(--bracket-arm) no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) right top    / var(--bracket-arm) var(--bracket-w) no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) right top    / var(--bracket-w) var(--bracket-arm) no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) left  bottom / var(--bracket-arm) var(--bracket-w) no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) left  bottom / var(--bracket-w) var(--bracket-arm) no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) right bottom / var(--bracket-arm) var(--bracket-w) no-repeat,
+    linear-gradient(var(--bracket), var(--bracket)) right bottom / var(--bracket-w) var(--bracket-arm) no-repeat;
+  filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.8));
 }
 
 .card-head {

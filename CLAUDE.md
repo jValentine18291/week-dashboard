@@ -142,6 +142,19 @@ plus two palettes in `public/app.js` — `PALETTE` for calendar blocks and
 solid fills on purpose: a pale fill reads as a hole punched in a dark panel,
 whereas a tinted wash reads as a lit surface.
 
+Panels carry HUD corner brackets: eight `linear-gradient` layers painted into a
+single `::after`, two arms per corner, inset 7px so the square arms sit inside
+the rounded corner rather than fighting the curve. No extra DOM. `::before` is
+the animated top seam and is absolutely positioned — it must not go back to
+being a flex item, or it steals a row of the card's height and takes `::after`
+with it.
+
+If the arms grow (`--bracket-arm`, `--bracket-w`) or the inset shrinks, re-check
+that they do not cross any text. That is measurable: build the eight arm
+rectangles per panel and test them against the bounding boxes of `.mon-what`,
+`.wk-title`, `.note-title` and friends. Currently zero overlap with a
+deliberately overfilled month.
+
 Check contrast after any colour change; it is measurable, so measure it rather
 than eyeballing. In the console with the dashboard loaded, walk the text nodes
 and compare each against its composited background — and composite translucent

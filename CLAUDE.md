@@ -28,11 +28,14 @@ User-facing setup steps: see `SETUP.txt`.
 - **No search bar, notification bell or avatar.** These were in the reference
   mockups and were cut on purpose — single-user app, nothing to notify.
 - **The rail contains only controls that work.** It holds the Month and Week
-  switches, Refresh and Log out, and nothing else. The reference mockup showed
-  ten nav items — Dashboard, Calendar, Tasks, Notes, Markets, News, Goals,
-  Files, Settings, Log out — for pages that do not exist in a single-page app,
-  two of which (Goals, Files) are not features in any phase. Do not add nav
-  entries for destinations that are not real; a dead link reads as a bug.
+  switches and Refresh, and nothing else. The reference mockup showed ten nav
+  items — Dashboard, Calendar, Tasks, Notes, Markets, News, Goals, Files,
+  Settings, Log out — for pages that do not exist in a single-page app, two of
+  which (Goals, Files) are not features in any phase. Do not add nav entries
+  for destinations that are not real; a dead link reads as a bug.
+  `POST /api/logout` still exists and works; the user asked for the button to
+  be removed because he will never use it. Keep the endpoint, leave it
+  unsurfaced.
 - **Auth fails closed.** With no `DASHBOARD_PASSWORD` set, `/api/dashboard` is
   served only to a loopback caller. Anything else gets a 503. Do not "simplify"
   this back to `if (!DASHBOARD_PASSWORD) return next()` — that shipped, and the
@@ -134,9 +137,60 @@ These are all load-bearing and all have cost real debugging time. Do not
    views; the week view narrows the same array with `eventsOn()`. Toggling
    views must not hit the server.
 
+## Files
+
+```
+server.js            express, auth, /api/dashboard
+lib/                 calendar.js, notion.js, week.js
+public/index.html    single page: boot host, gate, rail, topbar, three panels
+public/styles.css    dashboard
+public/boot.css      boot sequence only
+public/app.js        rendering + boot wiring
+public/boot.js       boot sequence (vanilla port of the handoff)
+public/emblem.js     animated hex-cube emblem (vanilla port of the handoff)
+verify-calendar.js   DTSTART-anchoring fixture
+```
+
+## HUD geometry
+
+Panels are **chamfered, not rounded** — that is the defining difference from a
+generic card. A `border` cannot follow a `clip-path`, so each panel is a pair:
+`.card` is the 1px gradient border clipped to the silhouette, `.card-in` is the
+dark fill clipped to the same silhouette one pixel smaller. `.rail`/`.rail-in`
+work identically. This is the design handoff's own technique; do not try to
+collapse it back into one element with a `border`.
+
+`.card-in::before` is the dim inset frame, `.card-in::after` the corner
+brackets. Both pseudo-elements are taken — anything else needs real markup.
+
+Type: **Orbitron** for headings and system labels only, **Rajdhani** for body
+and data. Do not set Orbitron on small text; it is unreadable below ~12px.
+
+## Boot sequence
+
+`boot.js` + `boot.css`, ported from the supplied handoff. Runs **once**, on the
+first successful load, from `load()` in `app.js`.
+
+- Progress is driven by real state, never simulated: fetch in flight, then
+  per-module status read from the payload the server actually returned. A panel
+  that errored shows `!`, not a tick.
+- **Market Feed and News Stream render as STANDBY**, not spinners. They are
+  phase 2 and do not exist; the handoff explicitly says never to leave a
+  spinner that cannot resolve.
+- A 401 aborts the boot immediately and shows the login gate — there is no
+  point booting a dashboard the user cannot see.
+- `MIN_VISIBLE_MS` is 1800. Both the handoff and the brief sanction a short
+  floor for visual continuity. Do not raise it to buy spectacle.
+- It must never run on the five-minute auto-refresh. `BOOTED` guards this.
+
+The centre badge hosts the same emblem as the rail, in `full` mode. The handoff
+offers a three.js cube; we do not take it — a WebGL dependency for a 64px
+decoration is not worth it, and reusing the emblem makes the boot screen and
+the dashboard visibly the same system. The rail runs the emblem in `idle` mode.
+
 ## Theme
 
-Dark neon. All colour lives in the `:root` tokens at the top of `styles.css`,
+Dark HUD. All colour lives in the `:root` tokens at the top of `styles.css`,
 plus two palettes in `public/app.js` — `PALETTE` for calendar blocks and
 `NOTE_COLOURS` for notes. Those two are written as `rgba()` washes rather than
 solid fills on purpose: a pale fill reads as a hole punched in a dark panel,

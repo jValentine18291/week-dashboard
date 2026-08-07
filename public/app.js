@@ -606,14 +606,54 @@ function renderHeader() {
   $('stamp').textContent = `Updated ${fmt(new Date(PAYLOAD.generatedAt), {
     hour: 'numeric', minute: '2-digit', hour12: true,
   })}`;
+  tickClock();
 }
 
+// Text-only update on a stable element — nothing reflows, nothing shifts.
+function tickClock() {
+  const c = $('clock');
+  if (c) {
+    c.textContent = fmt(new Date(), {
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+    });
+  }
+}
+
+// The boot sequence runs once, on the first successful load. The dashboard
+// reloads itself every five minutes; booting again each time would throw a
+// full-screen splash over whatever the user is reading.
+let BOOTED = false;
+
 async function load(force = false) {
-  const res = await fetch(`/api/dashboard${force ? '?refresh=1' : ''}`);
-  if (res.status === 401) return showGate();
+  const boot = !BOOTED && window.Boot ? Boot.start() : null;
+  if (boot) boot.progress(30);
+
+  let res;
+  try {
+    res = await fetch(`/api/dashboard${force ? '?refresh=1' : ''}`);
+  } catch (err) {
+    if (boot) boot.abort();
+    throw err;
+  }
+
+  if (res.status === 401) {
+    // Not signed in: no point booting a dashboard the user cannot see yet.
+    if (boot) boot.abort();
+    return showGate();
+  }
 
   PAYLOAD = await res.json();
   TZ = PAYLOAD.timezone || TZ;
+
+  // Module status comes from the payload the server actually returned, so a
+  // failed panel shows as failed rather than quietly reporting success.
+  if (boot) {
+    boot.progress(70);
+    boot.module('calendar', !PAYLOAD.calendar.error);
+    boot.module('tasks', !PAYLOAD.tasks.error);
+    boot.module('notes', !PAYLOAD.notes.error);
+    boot.progress(95);
+  }
 
   $('gate').hidden = true;
   $('app').hidden = false;
@@ -625,6 +665,9 @@ async function load(force = false) {
   // chips fit in a day cell, so the panels that share the layout have to claim
   // their height first or it measures a box it is about to lose.
   renderCalendar();
+
+  BOOTED = true;
+  if (boot) await boot.finish();
 }
 
 function showGate() {
@@ -663,14 +706,13 @@ document.addEventListener('click', (e) => {
 
 $('rail-refresh').addEventListener('click', () => load(true));
 
-$('rail-logout').addEventListener('click', async () => {
-  try {
-    await fetch('/api/logout', { method: 'POST' });
-  } finally {
-    PAYLOAD = null;
-    showGate();
-  }
-});
+// Idle mode in the rail: the full 15s boot choreography belongs on the boot
+// screen, not looping forever beside the calendar.
+if (window.Emblem) {
+  Emblem.create($('rail-emblem'), { size: 96, mode: 'idle', transparentBg: true });
+}
+
+setInterval(() => { if (PAYLOAD) tickClock(); }, 1000);
 
 // Redraw when the grid's box changes, so a resized window re-fits its chips.
 // Observing the element rather than the window also catches a scrollbar

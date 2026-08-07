@@ -145,6 +145,41 @@ The fix is `occurrenceReader()` (landmine 1) and `verify-calendar.js`. The
 lesson is narrower than "test more": when checking times, diff against the raw
 feed, and treat plausible-looking output as unverified.
 
+## The Productivity OS redesign
+
+The user supplied a HUD dashboard reference image, an animated emblem, and an
+animated loading screen, with a long brief asking the app to look and behave as
+though it belonged to the same fictional operating system. A mockup was
+approved before any code changed.
+
+What was built: chamfered HUD panel geometry, the handoff palette and type
+system, the rail, the animated emblem, the boot sequence, and the motion
+system. Everything real still works — the same read-only calendar and Notion
+integrations, the same month/week views, the same one-screen layout.
+
+What the brief asked for that was **not** built, and why:
+
+- **Search field, notification bell, avatar** — hard constraints above. Cut on
+  purpose, twice now.
+- **Quick Add, quick-note box, tickable checkboxes, event create/edit/drag,
+  note create/delete** — the app has no write credentials. The calendar is a
+  read-only iCal URL and the Notion token is read-only. This is not a styling
+  gap; the credentials cannot do it.
+- **Market Watch, Global Events & News** — phase 2, at the user's direction.
+  They appear in the boot screen as STANDBY modules so the composition is
+  honest about what exists.
+- **Routing, page transitions, modals, settings, profile, database** — none of
+  these exist in a single-page read-only dashboard.
+- **React component architecture** (`HudPanel`, `SciFiSidebar`, …) — no build
+  step. The same primitives exist as CSS classes.
+- **three.js cube** on the boot screen — replaced with the supplied emblem,
+  which is the same shape and adds no dependency.
+
+Both handoffs shipped as React. Both were ported to vanilla JS rather than
+adding a framework. The emblem port was checked against the original
+numerically — 17 derived values across 14 points of the 15s timeline, zero
+divergence.
+
 ## The move to a month view
 
 Asked for on first sight of the working dashboard, alongside "fit everything on

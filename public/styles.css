@@ -1,16 +1,27 @@
+/* Palette and shape language come from the Productivity OS design handoff, so
+   the dashboard and the boot screen read as one system. Boot-screen styles
+   live in boot.css. */
 :root {
-  --bg: #050a14;
-  --bg-lift: #0a1424;
-  --card: #0b1526;
-  --border: rgba(45, 212, 255, 0.16);
-  --hair: rgba(45, 212, 255, 0.08);
-  --ink: #e3f1ff;
-  --ink-2: #90aacb;
-  --ink-3: #5f7c9e;
-  --blue: #22d3ee;
-  --blue-deep: #3b82f6;
-  --blue-soft: rgba(34, 211, 238, 0.12);
-  --red: #fb5a76;
+  --bg: #02040a;
+  --bg-lift: #071226;
+  --card: #05111e;
+  --border: rgba(0, 200, 255, 0.15);
+  --border-on: rgba(0, 200, 255, 0.30);
+  --border-hot: rgba(0, 220, 255, 0.70);
+  --hair: rgba(0, 200, 255, 0.08);
+  --ink: #e9f7ff;
+  --ink-2: #8aa5c8;
+  --ink-3: #6d8db5;
+  --blue: #4cc3ff;
+  --blue-deep: #168cff;
+  --blue-soft: rgba(0, 200, 255, 0.12);
+  --red: #ff6b8a;
+  --ok: #34d399;
+  --warn: #ffb020;
+  --violet: #a78bfa;
+
+  /* Angular panel geometry — the single biggest departure from rounded cards. */
+  --cham: 14px;
 
   /* The neon look is a rim-light plus an outward bloom. Kept as tokens so the
      whole surface can be dimmed from one place. */
@@ -41,9 +52,9 @@ html, body {
   height: 100%;
   background: var(--bg);
   color: var(--ink);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-size: 13px;
-  line-height: 1.45;
+  font-family: 'Rajdhani', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -85,29 +96,57 @@ body {
 .rail {
   position: relative;
   grid-area: rail;
-  width: 164px;
+  width: 176px;
+  padding: 1px;
+  display: flex;
+  clip-path: polygon(var(--cham) 0, 100% 0, 100% calc(100% - var(--cham)), calc(100% - var(--cham)) 100%, 0 100%, 0 var(--cham));
+  background: linear-gradient(170deg, var(--border-on), rgba(0, 200, 255, .06) 55%, rgba(167, 139, 250, .2));
+}
+
+.rail-in {
+  position: relative;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 14px 16px 16px;
-  border-right: 1px solid rgba(34, 211, 238, 0.28);
-  background: linear-gradient(180deg, rgba(10, 20, 36, 0.9), rgba(5, 10, 20, 0.9));
-  box-shadow: 6px 0 26px rgba(34, 211, 238, 0.07);
+  padding: 12px 12px 14px;
+  overflow: hidden;
+  clip-path: polygon(calc(var(--cham) - 1px) 0, 100% 0, 100% calc(100% - var(--cham) + 1px), calc(100% - var(--cham) + 1px) 100%, 0 100%, 0 calc(var(--cham) - 1px));
+  background: linear-gradient(180deg, #071226, #03080f);
 }
 
-.rail-brand {
+.rail-meta {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px; height: 44px;
-  margin: 2px auto 16px;
-  border-radius: 13px;
-  color: var(--blue);
-  background: rgba(34, 211, 238, 0.10);
-  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35), 0 0 22px rgba(34, 211, 238, 0.22);
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 10px;
 }
 
-.rail-brand svg { width: 24px; height: 24px; }
+.rail-meta-l {
+  font-size: 8.5px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #4a6884;
+}
+
+.rail-meta-v {
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.rail-meta-v.ok { color: var(--ok); }
+
+/* Just a mount point — the emblem brings its own frame, rings and glow. */
+.rail-brand {
+  display: grid;
+  place-items: center;
+  margin: 0 auto 10px;
+  min-height: 96px;
+}
 
 .rail-nav { display: flex; flex-direction: column; gap: 4px; }
 .rail-foot { margin-top: auto; }
@@ -223,15 +262,28 @@ button:focus-visible,
 }
 
 .greeting {
-  font-size: 19px;
+  font-family: 'Orbitron', ui-sans-serif, sans-serif;
+  font-size: 17px;
   font-weight: 700;
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink);
-  text-shadow: 0 0 18px rgba(34, 211, 238, 0.35);
+  letter-spacing: 0.11em;
+  color: #f2f9ff;
+  text-shadow: 0 0 22px rgba(76, 195, 255, 0.35);
 }
-.topbar-date { color: var(--ink-2); margin: 2px 0 0; font-size: 13px; }
+.topbar-date {
+  color: var(--ink-2);
+  margin: 2px 0 0;
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-sep { color: rgba(0, 200, 255, .55); }
+.topbar-clock { color: var(--blue); font-variant-numeric: tabular-nums; }
 
 .topbar-right { display: flex; align-items: center; gap: 12px; }
 .stamp { font-size: 12px; color: var(--ink-3); }
@@ -282,49 +334,66 @@ button:focus-visible,
    blue -> near-nothing -> violet, so an edge is brightest where it catches the
    light and fades where it does not. A uniform border reads as a drawn
    outline; this reads as a lit surface. */
+/* HUD panel: two clipped layers, per the design handoff. The outer element is
+   the 1px border — a gradient clipped to the chamfered silhouette — and the
+   inner one is the dark fill, same silhouette. A plain `border` cannot follow a
+   clip-path, which is why this is a pair rather than one element. */
 .card {
   position: relative;
-  background:
-    linear-gradient(168deg, #0e1c31 0%, #091220 55%, #070d18 100%) padding-box,
-    linear-gradient(135deg,
-      rgba(34, 211, 238, 0.9) 0%,
-      rgba(59, 130, 246, 0.45) 22%,
-      rgba(34, 211, 238, 0.06) 52%,
-      rgba(59, 130, 246, 0.3) 78%,
-      rgba(167, 139, 250, 0.6) 100%) border-box;
-  background-color: var(--card);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  box-shadow:
-    inset 0 1px 0 rgba(34, 211, 238, 0.14),
-    inset 0 0 26px rgba(34, 211, 238, 0.045),
-    0 0 30px rgba(34, 211, 238, 0.10),
-    0 10px 34px rgba(0, 0, 0, 0.55);
+  padding: 1px;
   min-width: 0;
   min-height: 0;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  clip-path: polygon(var(--cham) 0, 100% 0, 100% calc(100% - var(--cham)), calc(100% - var(--cham)) 100%, 0 100%, 0 var(--cham));
+  background: linear-gradient(150deg,
+    var(--border-on) 0%,
+    rgba(0, 200, 255, 0.10) 42%,
+    rgba(0, 200, 255, 0.05) 64%,
+    rgba(167, 139, 250, 0.22) 100%);
+  transition: background 240ms cubic-bezier(.22, 1, .36, 1);
 }
 
-/* A brighter seam along the top edge, so each panel reads as lit from above.
-   Absolutely positioned rather than a flex item: it should not consume a row
-   of the card's height, and ::after is needed for the corner brackets. */
-.card::before {
+.card:hover {
+  background: linear-gradient(150deg,
+    var(--border-hot) 0%,
+    rgba(0, 200, 255, 0.18) 42%,
+    rgba(0, 200, 255, 0.08) 64%,
+    rgba(167, 139, 250, 0.34) 100%);
+}
+
+.card-in {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  clip-path: polygon(calc(var(--cham) - 1px) 0, 100% 0, 100% calc(100% - var(--cham) + 1px), calc(100% - var(--cham) + 1px) 100%, 0 100%, 0 calc(var(--cham) - 1px));
+  background:
+    linear-gradient(rgba(0, 200, 255, 0.022) 1px, transparent 1px) 0 0 / 26px 26px,
+    linear-gradient(168deg, #081b29, var(--card) 62%, #04101c);
+  background-color: var(--card);
+}
+
+/* Dim secondary frame inset from the edge — a reference detail that reads as
+   panel construction rather than decoration. */
+.card-in::before {
   content: '';
   position: absolute;
-  top: 0; left: 12%; right: 12%;
-  height: 1px;
+  inset: 5px;
   z-index: 2;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.75), transparent);
+  border: 1px solid rgba(0, 200, 255, 0.09);
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
 }
 
 /* HUD corner brackets. Eight gradients — two arms per corner — painted into a
-   single pseudo-element, so no extra DOM. Inset slightly so the square arms
-   sit inside the card's rounded corner instead of fighting the curve. */
-.card::after,
-.rail::after,
+   single pseudo-element, so no extra DOM. They sit inside the chamfer rather
+   than on it; a square arm laid across the cut corner reads as a mistake. */
+.card-in::after,
+.rail-in::after,
 .gate-card::after {
   content: '';
   position: absolute;
@@ -391,12 +460,15 @@ button:focus-visible,
 }
 
 .card-head-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+/* Orbitron is the display face — headings and system labels only. Body and
+   data stay in Rajdhani, which is far more readable at 11-13px. */
 .card-title {
-  font-size: 14px;
+  font-family: 'Orbitron', ui-sans-serif, sans-serif;
+  font-size: 12.5px;
   font-weight: 700;
   margin: 0;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   color: var(--ink);
 }
 .card-meta { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
@@ -954,29 +1026,18 @@ button:focus-visible,
   50%      { box-shadow: 0 0 18px rgba(251, 90, 118, 1);    opacity: 1; }
 }
 
-@keyframes seamSweep {
-  0%   { opacity: 0.35; }
-  50%  { opacity: 1; }
-  100% { opacity: 0.35; }
-}
+/* Reveal order follows the brief: rail, rail contents, header, then panels.
+   Small movement — panels should read as activating, not flying in. */
+.rail   { animation: fadeIn 320ms ease backwards; }
+.rail-in > * { animation: slideInLeft 380ms cubic-bezier(.22,1,.36,1) backwards; animation-delay: 70ms; }
+.topbar { animation: fadeIn 420ms ease 130ms backwards; }
 
-.topbar { animation: fadeIn 500ms ease backwards; }
+.card { animation: riseIn 420ms cubic-bezier(.22,1,.36,1) backwards; }
+.card-calendar { animation-delay: 200ms; }
+.card-week     { animation-delay: 280ms; }
+.card-notes    { animation-delay: 420ms; }
 
-.rail-brand { animation: slideInLeft 420ms cubic-bezier(.2,.7,.3,1) backwards, breathe 3.6s ease-in-out 600ms infinite; }
-.rail-item  { animation: slideInLeft 380ms cubic-bezier(.2,.7,.3,1) backwards; }
-.rail-nav .rail-item:nth-child(1) { animation-delay: 90ms; }
-.rail-nav .rail-item:nth-child(2) { animation-delay: 150ms; }
-.rail-nav .rail-item:nth-child(3) { animation-delay: 210ms; }
-.rail-foot .rail-item { animation-delay: 270ms; }
-
-.card { animation: riseIn 520ms cubic-bezier(.2,.7,.3,1) backwards; }
-.card-calendar { animation-delay: 120ms; }
-.card-week     { animation-delay: 200ms; }
-.card-notes    { animation-delay: 280ms; }
-
-.card::before { animation: seamSweep 5.5s ease-in-out infinite; }
-.card-week::before  { animation-delay: 1.2s; }
-.card-notes::before { animation-delay: 2.4s; }
+/* The emblem does its own breathing — do not add a second one on top. */
 
 .nowline { animation: nowPulse 2.6s ease-in-out infinite; }
 

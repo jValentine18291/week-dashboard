@@ -9,8 +9,9 @@
 <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/boot.css">
 </head>
 <body>
 
@@ -27,13 +28,8 @@
 <div id="app" hidden>
 
   <aside class="rail">
-    <div class="rail-brand" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-           stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z"></path>
-        <path d="M12 8.5 16 11v4l-4 2.5L8 15v-4z"></path>
-      </svg>
-    </div>
+    <div class="rail-in">
+    <div class="rail-brand" id="rail-emblem" aria-hidden="true"></div>
 
     <nav class="rail-nav" aria-label="Calendar view">
       <button class="rail-item" data-view="month" type="button">
@@ -63,21 +59,26 @@
     </nav>
 
     <div class="rail-foot">
-      <button class="rail-item" id="rail-logout" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3v9"></path>
-          <path d="M6.5 6.8a8 8 0 1 0 11 0"></path>
-        </svg>
-        <span>Log out</span>
-      </button>
+      <div class="rail-meta">
+        <span class="rail-meta-l">Timezone</span>
+        <span class="rail-meta-v" id="rail-tz">Asia/Singapore</span>
+      </div>
+      <div class="rail-meta">
+        <span class="rail-meta-l">Feeds</span>
+        <span class="rail-meta-v ok" id="rail-feeds">Online</span>
+      </div>
+    </div>
     </div>
   </aside>
 
   <header class="topbar">
     <div>
       <h1 id="greeting" class="greeting">Good morning</h1>
-      <p id="today-date" class="topbar-date">&nbsp;</p>
+      <p class="topbar-date">
+        <span id="today-date">&nbsp;</span>
+        <span class="topbar-sep">//</span>
+        <span id="clock" class="topbar-clock">&nbsp;</span>
+      </p>
     </div>
     <div class="topbar-right">
       <span id="stamp" class="stamp">&nbsp;</span>
@@ -88,6 +89,7 @@
   <main class="layout">
 
     <section class="card card-calendar" aria-labelledby="h-cal">
+      <div class="card-in">
       <div class="card-head">
         <div class="card-head-left">
           <span class="card-icon icon-cal" aria-hidden="true">
@@ -125,9 +127,11 @@
         </div>
       </div>
       <p id="calendar-error" class="card-error" hidden></p>
+      </div>
     </section>
 
     <section class="card card-week" aria-labelledby="h-week">
+      <div class="card-in">
       <div class="card-head">
         <div class="card-head-left">
           <span class="card-icon icon-week" aria-hidden="true">
@@ -153,9 +157,11 @@
       </div>
       <div id="week-list" class="week-list"></div>
       <p id="tasks-error" class="card-error" hidden></p>
+      </div>
     </section>
 
     <section class="card card-notes" aria-labelledby="h-notes">
+      <div class="card-in">
       <div class="card-head">
         <div class="card-head-left">
           <span class="card-icon icon-notes" aria-hidden="true">
@@ -172,11 +178,14 @@
       </div>
       <div id="notes" class="notes-grid"></div>
       <p id="notes-error" class="card-error" hidden></p>
+      </div>
     </section>
 
   </main>
 </div>
 
+<script src="/emblem.js"></script>
+<script src="/boot.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

@@ -186,7 +186,17 @@ first successful load, from `load()` in `app.js`.
 The centre badge hosts the same emblem as the rail, in `full` mode. The handoff
 offers a three.js cube; we do not take it — a WebGL dependency for a 64px
 decoration is not worth it, and reusing the emblem makes the boot screen and
-the dashboard visibly the same system. The rail runs the emblem in `idle` mode.
+the dashboard visibly the same system.
+
+**The rail plays `full` once, then swaps itself to `idle`** via `onLoop`. Not
+`full` on a loop: that fades the logo out and re-ignites it every 15 seconds
+beside the calendar. Not `idle` from the start either — the user asked to see
+the whole choreography, and idle skips the ignition and assembly.
+
+That swap is why `emblem.js` has a `killed` flag. `onLoop` fires from inside
+the rAF step, and the step schedules the next frame *after* calling it — so an
+`onLoop` that destroys the instance would otherwise leave the old, detached SVG
+animating forever. Verified: zero pending frames after teardown.
 
 ## Theme
 

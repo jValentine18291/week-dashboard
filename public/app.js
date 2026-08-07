@@ -706,10 +706,21 @@ document.addEventListener('click', (e) => {
 
 $('rail-refresh').addEventListener('click', () => load(true));
 
-// Idle mode in the rail: the full 15s boot choreography belongs on the boot
-// screen, not looping forever beside the calendar.
+// The rail plays the full 15s choreography once — ignition, frame, cube
+// assembly, pulse — then settles into the idle breathe. Looping `full` forever
+// would fade the logo out and re-ignite it every 15 seconds next to the
+// calendar, which is a lot of movement for a screen left open all day.
 if (window.Emblem) {
-  Emblem.create($('rail-emblem'), { size: 96, mode: 'idle', transparentBg: true });
+  const host = $('rail-emblem');
+  let inst = Emblem.create(host, {
+    size: 96,
+    mode: 'full',
+    transparentBg: true,
+    onLoop: () => {
+      inst.destroy();
+      inst = Emblem.create(host, { size: 96, mode: 'idle', transparentBg: true });
+    },
+  });
 }
 
 setInterval(() => { if (PAYLOAD) tickClock(); }, 1000);

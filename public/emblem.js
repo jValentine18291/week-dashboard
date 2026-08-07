@@ -264,8 +264,9 @@ window.Emblem = (function () {
     }
 
     // ── clock ───────────────────────────────────────────────────────────────
-    var t = idle ? CUES.Idle : 0, last = null, raf = null;
+    var t = idle ? CUES.Idle : 0, last = null, raf = null, killed = false;
     function step(now) {
+      if (killed) return;
       if (last == null) last = now;
       t += ((now - last) / 1000) * speed;
       last = now;
@@ -273,12 +274,16 @@ window.Emblem = (function () {
         if (t >= CUES.Pulse) t = CUES.Idle + ((t - CUES.Idle) % (CUES.Pulse - CUES.Idle));
       } else if (t >= TOTAL) {
         t = t % TOTAL;
+        // onLoop is allowed to destroy this instance. Re-check before doing
+        // anything else, or the frame we schedule below outlives the teardown
+        // and animates a detached SVG forever.
         if (opts.onLoop) opts.onLoop();
+        if (killed) return;
       }
       draw(t);
-      raf = requestAnimationFrame(step);
+      if (!killed) raf = requestAnimationFrame(step);
     }
-    function start() { if (raf == null) { last = null; raf = requestAnimationFrame(step); } }
+    function start() { if (!killed && raf == null) { last = null; raf = requestAnimationFrame(step); } }
     function stop() { if (raf != null) { cancelAnimationFrame(raf); raf = null; } }
 
     draw(t);
@@ -292,7 +297,12 @@ window.Emblem = (function () {
     return {
       el: svg,
       setPlaying: function (v) { playing = v; if (v && !reduced) start(); else stop(); },
-      destroy: function () { stop(); document.removeEventListener('visibilitychange', onVis); if (svg.parentNode) svg.parentNode.removeChild(svg); }
+      destroy: function () {
+        killed = true;
+        stop();
+        document.removeEventListener('visibilitychange', onVis);
+        if (svg.parentNode) svg.parentNode.removeChild(svg);
+      }
     };
   }
 

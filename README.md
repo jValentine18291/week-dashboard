@@ -1,9 +1,8 @@
 # The Week — personal dashboard
 
 A desktop dashboard showing your week at a glance: a Google Calendar month grid
-with a week view a click away,
-a This Week checklist merging tasks and events with a progress bar, and recent
-Notion notes as coloured cards. Click anything to expand it.
+with a week view a click away, a This Week checklist merging tasks and events
+with a progress bar, and a news feed. Click anything to expand it.
 
 Read-only by design — nothing here writes back to Notion or Google.
 
@@ -11,7 +10,8 @@ Working on this with Claude Code? `CLAUDE.md` loads automatically and holds the
 project's constraints and pitfalls; `HANDOVER.md` has the background and the
 reasoning behind them.
 
-Phase 1. No news, no stocks — those come later, once you know you want them.
+The Notes panel was replaced by News and can be re-added — see `CLAUDE.md`.
+Market Watch is still unbuilt.
 
 ---
 
@@ -37,9 +37,9 @@ ever leaks, click **Reset** on that page and the old URL dies.
 2. Name it "Week Dashboard", pick your workspace, choose **Internal**
 3. Copy the **Internal Integration Secret**
 
-### 3. Notion data source IDs
+### 3. Notion data source ID
 
-For your Tasks database and your Notes database:
+For your Tasks database (Notes has no panel at present):
 
 1. Open the database as a full page
 2. **⋯** → **Connections** → add your "Week Dashboard" integration
@@ -56,8 +56,6 @@ in version 2025-09-03 and this app uses the current endpoints.
 **Tasks:** a title, a date column called `Due`, a status column called
 `Status`, a tag column called `Area`, and optionally a `Priority` column
 (High / Medium / Low) which drives the coloured pills.
-
-**Notes:** a title. That's all — sorted by creation date.
 
 If your columns are named differently, don't rename them. Set the
 `NOTION_*_PROPERTY` variables in `.env` instead.
@@ -115,8 +113,12 @@ marked secure.
 - **Data is cached for 60 seconds.** The Refresh button bypasses the cache.
 - **The page refreshes itself every five minutes**, so a window left open on a
   second monitor stays current.
+- **The news feed** interleaves stories from CNA Singapore and BBC World,
+  newest first, with a relative timestamp. Feeds with no thumbnail get a
+  tinted source initial instead. Set `NEWS_FEEDS` to point it elsewhere.
 - **Panels fail independently.** A broken calendar feed shows an error in that
-  panel while tasks and notes carry on.
+  panel while tasks and news carry on. One dead RSS feed doesn't blank the
+  news panel either — the other still shows.
 - **Every row in This Week shows its date on the right**, in a single aligned
   column, with a second line qualifying it — a time for a timed event, "All
   day", "Due", or "Overdue". Tasks are square markers, events round.
@@ -131,18 +133,22 @@ marked secure.
 
 ---
 
-## Where phase 2 would go
+## Adding another panel
 
-The payload is assembled in `buildPayload()` in `server.js`. A news or stocks
-panel is a new function in `lib/`, one more entry in the `Promise.allSettled`
-array, and one more render function in `public/app.js`. The structure is
-already there — don't restructure to add them.
+The payload is assembled in `buildPayload()` in `server.js`. A panel is a new
+function in `lib/`, one more entry in the `Promise.allSettled` array, and one
+more render function in `public/app.js`. News was added exactly that way —
+don't restructure to add the next one.
 
-The layout grid in `styles.css` reserves the space: `.layout` currently uses
+The layout grid in `styles.css` currently uses
 
 ```
 "cal   week"
-"notes week"
+"news  week"
 ```
 
-Market Watch slots between `cal` and `notes`; News goes under `week`.
+The whole viewport is already spoken for, so a new panel means giving something
+up. `.card-news` is capped at `176px` for that reason: uncapped, the feed grows
+with its content and takes the height out of the calendar. Measured at
+1920×950, 176px keeps the month grid at 4 events per day and 190px drops it
+to 3.

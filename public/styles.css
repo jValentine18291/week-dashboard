@@ -17,9 +17,10 @@
   --glow-soft: 0 0 0 1px rgba(45, 212, 255, 0.06), 0 0 24px rgba(34, 211, 238, 0.06);
   --glow-edge: 0 0 12px rgba(34, 211, 238, 0.35);
 
-  /* HUD corner brackets */
-  --bracket: rgba(34, 211, 238, 0.95);
-  --bracket-arm: 17px;
+  /* HUD corner brackets. Arms are long because they fade out — see the
+     .card::after rule. Raising --bracket-w past 2px starts to look drawn on. */
+  --bracket: rgba(103, 232, 249, 0.95);
+  --bracket-arm: 38px;
   --bracket-w: 2px;
 
   --radius: 12px;
@@ -52,9 +53,15 @@ html, body {
    rather than as a flat black rectangle. Fixed, so panels scroll over it. */
 body {
   overflow: hidden;
+  /* A faint engineering grid under everything, lit by two pools of colour. The
+     panels are opaque, so it only shows in the gaps between them — which is
+     exactly where the reference shows it. */
   background-image:
-    radial-gradient(1100px 700px at 18% -10%, rgba(34, 211, 238, 0.10), transparent 60%),
-    radial-gradient(900px 600px at 92% 8%, rgba(59, 130, 246, 0.10), transparent 60%);
+    linear-gradient(rgba(34, 211, 238, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.055) 1px, transparent 1px),
+    radial-gradient(1100px 700px at 18% -10%, rgba(34, 211, 238, 0.12), transparent 60%),
+    radial-gradient(900px 600px at 92% 8%, rgba(59, 130, 246, 0.12), transparent 60%);
+  background-size: 46px 46px, 46px 46px, auto, auto;
   background-attachment: fixed;
 }
 
@@ -269,16 +276,30 @@ button:focus-visible,
 .card-week { grid-area: week; }
 .card-notes { grid-area: notes; }
 
+/* The border is a gradient, not a flat colour: two background layers, the panel
+   fill clipped to padding-box and the rim clipped to border-box, with a
+   transparent border letting the rim show through. The rim travels cyan ->
+   blue -> near-nothing -> violet, so an edge is brightest where it catches the
+   light and fades where it does not. A uniform border reads as a drawn
+   outline; this reads as a lit surface. */
 .card {
   position: relative;
-  background: var(--card);
-  border: 1px solid rgba(34, 211, 238, 0.28);
+  background:
+    linear-gradient(168deg, #0e1c31 0%, #091220 55%, #070d18 100%) padding-box,
+    linear-gradient(135deg,
+      rgba(34, 211, 238, 0.9) 0%,
+      rgba(59, 130, 246, 0.45) 22%,
+      rgba(34, 211, 238, 0.06) 52%,
+      rgba(59, 130, 246, 0.3) 78%,
+      rgba(167, 139, 250, 0.6) 100%) border-box;
+  background-color: var(--card);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   box-shadow:
-    inset 0 0 22px rgba(34, 211, 238, 0.05),
-    0 0 0 1px rgba(34, 211, 238, 0.06),
-    0 0 26px rgba(34, 211, 238, 0.12),
-    0 10px 30px rgba(0, 0, 0, 0.5);
+    inset 0 1px 0 rgba(34, 211, 238, 0.14),
+    inset 0 0 26px rgba(34, 211, 238, 0.045),
+    0 0 30px rgba(34, 211, 238, 0.10),
+    0 10px 34px rgba(0, 0, 0, 0.55);
   min-width: 0;
   min-height: 0;
   overflow: hidden;
@@ -310,16 +331,22 @@ button:focus-visible,
   inset: 7px;
   z-index: 3;
   pointer-events: none;
+  /* Each arm fades along its own length — solid at the corner, dissolving as it
+     runs away from it. A solid arm ends abruptly and reads as a drawn tick;
+     a fading one reads as light falling off. Arms are longer than they were,
+     which only works because the far end is already invisible. */
   background:
-    linear-gradient(var(--bracket), var(--bracket)) left  top    / var(--bracket-arm) var(--bracket-w) no-repeat,
-    linear-gradient(var(--bracket), var(--bracket)) left  top    / var(--bracket-w) var(--bracket-arm) no-repeat,
-    linear-gradient(var(--bracket), var(--bracket)) right top    / var(--bracket-arm) var(--bracket-w) no-repeat,
-    linear-gradient(var(--bracket), var(--bracket)) right top    / var(--bracket-w) var(--bracket-arm) no-repeat,
-    linear-gradient(var(--bracket), var(--bracket)) left  bottom / var(--bracket-arm) var(--bracket-w) no-repeat,
-    linear-gradient(var(--bracket), var(--bracket)) left  bottom / var(--bracket-w) var(--bracket-arm) no-repeat,
-    linear-gradient(var(--bracket), var(--bracket)) right bottom / var(--bracket-arm) var(--bracket-w) no-repeat,
-    linear-gradient(var(--bracket), var(--bracket)) right bottom / var(--bracket-w) var(--bracket-arm) no-repeat;
-  filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.8));
+    linear-gradient(90deg,  var(--bracket), transparent) left  top    / var(--bracket-arm) var(--bracket-w) no-repeat,
+    linear-gradient(180deg, var(--bracket), transparent) left  top    / var(--bracket-w) var(--bracket-arm) no-repeat,
+    linear-gradient(270deg, var(--bracket), transparent) right top    / var(--bracket-arm) var(--bracket-w) no-repeat,
+    linear-gradient(180deg, var(--bracket), transparent) right top    / var(--bracket-w) var(--bracket-arm) no-repeat,
+    linear-gradient(90deg,  var(--bracket), transparent) left  bottom / var(--bracket-arm) var(--bracket-w) no-repeat,
+    linear-gradient(0deg,   var(--bracket), transparent) left  bottom / var(--bracket-w) var(--bracket-arm) no-repeat,
+    linear-gradient(270deg, var(--bracket), transparent) right bottom / var(--bracket-arm) var(--bracket-w) no-repeat,
+    linear-gradient(0deg,   var(--bracket), transparent) right bottom / var(--bracket-w) var(--bracket-arm) no-repeat;
+  /* Wider, weaker bloom: the hard 5px halo was what made these look stuck on. */
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.45))
+          drop-shadow(0 0 3px rgba(34, 211, 238, 0.35));
 }
 
 .card-head {

@@ -176,9 +176,19 @@ What the brief asked for that was **not** built, and why:
   which is the same shape and adds no dependency.
 
 Both handoffs shipped as React. Both were ported to vanilla JS rather than
-adding a framework. The emblem port was checked against the original
-numerically — 17 derived values across 14 points of the 15s timeline, zero
-divergence.
+adding a framework. The emblem port is checked against the original
+numerically rather than by eye — every animated attribute is recomputed from a
+transcription of the JSX and diffed against the port driven through the same
+rAF step. Currently 187 derived values across 33 points of the 15s timeline in
+both modes, zero divergence.
+
+A second emblem handoff arrived later and was ported the same way. It is the
+same timeline, geometry and palette with seven additions: ignition spokes, a
+comet head on the frame draw, orbiting glints, a core impact flare and ripple,
+a radial spark burst on the pulse, a second cube highlight, and a spark on
+power-down. Sample times for the diff deliberately avoid exact cue boundaries —
+`gate()` is a step function and the clock lands within ~1e-13 of the requested
+time, which flips a gate at an edge and reports a mismatch that is not one.
 
 ## The move to a month view
 

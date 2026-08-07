@@ -50,6 +50,13 @@ window.Emblem = (function () {
     for (var k = 0; k < 6; k++) { var p = pt(r, 60 * k - 90); out.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); }
     return out.join(' ');
   }
+  // Position along the hex perimeter as a 0..1 fraction — the comet head rides
+  // the frame stroke, so it has to follow the polygon, not a circle.
+  function perim(r, p) {
+    var q = (((p % 1) + 1) % 1) * 6, k = Math.floor(q), f = q - k;
+    var a = pt(r, 60 * k - 90), b = pt(r, 60 * (k + 1) - 90);
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+  }
   var ACCENTS = [];
   for (var k = 0; k < 6; k++) {
     var a1 = pt(452, 60 * k - 90), a2 = pt(452, 60 * (k + 1) - 90);
@@ -65,6 +72,14 @@ window.Emblem = (function () {
     for (var i = 0; i < 16; i++) out.push({ x: rnd() * 1080, y: rnd() * 1080, r: 1 + rnd() * 2, ph: rnd() * TAU, sp: 0.6 + rnd() * 1.2 });
     return out;
   })();
+  // Same seeded generator as the handoff, drawn in the same order, so the
+  // scatter matches the design frame for frame.
+  var PSPARKS = (function () {
+    var seed = 9, out = [];
+    function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+    for (var i = 0; i < 12; i++) out.push({ a: (i / 12) * TAU + rnd() * 0.4, sp: 0.85 + rnd() * 0.5 });
+    return out;
+  })();
   var FACES = [
     { pts: '0,-128 110,-64 0,0 -110,-64', fill: 'rgba(238,250,255,.96)', from: [0, -110] },
     { pts: '-110,-64 0,0 0,128 -110,64', fill: 'rgba(125,208,255,.78)', from: [-100, 70] },
@@ -75,6 +90,19 @@ window.Emblem = (function () {
     var n = document.createElementNS(NS, name);
     if (attrs) for (var key in attrs) n.setAttribute(key, attrs[key]);
     return n;
+  }
+
+  // A polygon with pathLength="100" and dasharray="100" still shows a hairline
+  // seam where the dash meets its own start. Once the stroke is fully drawn
+  // there is nothing left to reveal, so drop the dash entirely.
+  function setDraw(node, p, negative) {
+    if (p >= 1) {
+      node.setAttribute('stroke-dasharray', 'none');
+      node.setAttribute('stroke-dashoffset', 0);
+    } else {
+      node.setAttribute('stroke-dasharray', '100');
+      node.setAttribute('stroke-dashoffset', negative ? -(100 - p * 100) : 100 - p * 100);
+    }
   }
 
   function create(host, opts) {
@@ -113,6 +141,12 @@ window.Emblem = (function () {
     R.sparkCore = el('circle', { cx: CX, cy: CY, r: 5, fill: '#ffffff' });
     G.appendChild(R.igRing); G.appendChild(R.spark); G.appendChild(R.sparkCore);
 
+    R.spokes = [];
+    for (var sk = 0; sk < 6; sk++) {
+      var spoke = el('line', { stroke: '#8fdcff', 'stroke-width': '3', 'stroke-linecap': 'round' });
+      G.appendChild(spoke); R.spokes.push(spoke);
+    }
+
     R.rotDots = el('g');
     R.dots = el('circle', { cx: CX, cy: CY, r: '398', stroke: 'rgba(76,195,255,.3)', 'stroke-width': '1.6', fill: 'none', 'stroke-dasharray': '3 15' });
     R.rotDots.appendChild(R.dots); G.appendChild(R.rotDots);
@@ -121,10 +155,20 @@ window.Emblem = (function () {
     R.outerHex = el('polygon', { points: hexPts(505), stroke: 'rgba(76,195,255,.14)', 'stroke-width': '1.4', fill: 'none', 'stroke-dasharray': '26 20' });
     R.rotHex.appendChild(R.outerHex); G.appendChild(R.rotHex);
 
+    R.orbs = [];
+    for (var ob = 0; ob < 3; ob++) {
+      var orb = el('circle', { r: '4', fill: '#bfeaff' });
+      G.appendChild(orb); R.orbs.push(orb);
+    }
+
     R.frame1 = el('polygon', { points: hexPts(462), stroke: 'rgba(140,215,255,.6)', 'stroke-width': '3', fill: 'none', pathLength: '100', 'stroke-dasharray': '100', 'stroke-linecap': 'round' });
     R.frame2 = el('polygon', { points: hexPts(440), stroke: 'rgba(76,195,255,.28)', 'stroke-width': '1.6', fill: 'none', pathLength: '100', 'stroke-dasharray': '100' });
     R.frameGlint = el('polygon', { points: hexPts(462), stroke: '#eaf9ff', 'stroke-width': '4', fill: 'none', pathLength: '100', 'stroke-dasharray': '7 93', 'stroke-linecap': 'round' });
     G.appendChild(R.frame1); G.appendChild(R.frame2); G.appendChild(R.frameGlint);
+
+    R.cometGlow = el('circle', { cx: CX, cy: CY, r: '8', fill: '#ffffff', filter: 'url(#' + ns + '-soft)' });
+    R.cometCore = el('circle', { cx: CX, cy: CY, r: '3.5', fill: '#ffffff' });
+    G.appendChild(R.cometGlow); G.appendChild(R.cometCore);
 
     R.accents = ACCENTS.map(function (a) {
       var l = el('line', { x1: a.x1, y1: a.y1, x2: a.x2, y2: a.y2, stroke: '#4cc3ff', 'stroke-width': '5', 'stroke-linecap': 'round' });
@@ -153,6 +197,11 @@ window.Emblem = (function () {
       G.appendChild(p); return p;
     });
 
+    R.psparks = PSPARKS.map(function () {
+      var l = el('line', { stroke: '#bfeaff', 'stroke-width': '3.5', 'stroke-linecap': 'round' });
+      G.appendChild(l); return l;
+    });
+
     R.ringGlow = el('polygon', { points: hexPts(330), stroke: 'url(#' + ns + '-ring)', 'stroke-width': '38', fill: 'none', filter: 'url(#' + ns + '-soft)', 'stroke-linejoin': 'round' });
     R.ringMain = el('polygon', { points: hexPts(330), stroke: 'url(#' + ns + '-ring)', 'stroke-width': '24', fill: 'none', 'stroke-linejoin': 'round', pathLength: '100', 'stroke-dasharray': '100' });
     R.ringGlint = el('polygon', { points: hexPts(330), stroke: '#ffffff', 'stroke-width': '10', fill: 'none', 'stroke-linejoin': 'round', 'stroke-linecap': 'round', pathLength: '100', 'stroke-dasharray': '12 88' });
@@ -163,6 +212,12 @@ window.Emblem = (function () {
     R.facet.appendChild(el('polygon', { points: hexPts(216), fill: 'none', stroke: 'rgba(120,200,255,.16)', 'stroke-width': '1.5' }));
     G.appendChild(R.facet);
 
+    R.ripple = el('polygon', { points: hexPts(258), fill: 'none', stroke: '#bfeaff', 'stroke-width': '3' });
+    G.appendChild(R.ripple);
+
+    // Two nested groups: the outer one takes the impact punch, the inner one
+    // the idle float. Combining them would make the punch scale the offset too.
+    R.cubeWrap = el('g');
     R.cube = el('g');
     R.faces = FACES.map(function (f) {
       var g = el('g');
@@ -170,10 +225,15 @@ window.Emblem = (function () {
       R.cube.appendChild(g); return g;
     });
     R.topHi = el('polygon', { points: '0,-128 110,-64 0,0 -110,-64', transform: 'translate(' + CX + ' ' + CY + ')', fill: '#ffffff' });
-    R.cube.appendChild(R.topHi); G.appendChild(R.cube);
+    R.rightHi = el('polygon', { points: '110,-64 0,0 0,128 110,64', transform: 'translate(' + CX + ' ' + CY + ')', fill: '#ffffff' });
+    R.cube.appendChild(R.topHi); R.cube.appendChild(R.rightHi);
+    R.cubeWrap.appendChild(R.cube); G.appendChild(R.cubeWrap);
 
     R.flash = el('rect', { x: '0', y: '0', width: '1080', height: '1080', fill: '#dff4ff' });
     G.appendChild(R.flash);
+
+    R.fadeSpark = el('circle', { cx: CX, cy: CY, r: '26', fill: '#cfeeff', filter: 'url(#' + ns + '-soft)' });
+    G.appendChild(R.fadeSpark);
 
     host.appendChild(svg);
 
@@ -199,18 +259,49 @@ window.Emblem = (function () {
       R.spark.setAttribute('opacity', sparkOp);
       R.sparkCore.setAttribute('opacity', sparkOp);
 
+      // Spokes fire inward during ignition and are spent by the Core cue; the
+      // p*(1-p) envelope fades each one in and out along its own travel.
+      for (var sp = 0; sp < 6; sp++) {
+        var st = 0.35 + sp * 0.09, p = MOTION.draw(st, st + 1.15)(T);
+        var sa = (Math.PI / 180) * (60 * sp - 60);
+        var r1 = 410 - 340 * p, r2 = r1 + 80;
+        var spoke = R.spokes[sp];
+        spoke.setAttribute('x1', CX + r1 * Math.cos(sa));
+        spoke.setAttribute('y1', CY + r1 * Math.sin(sa));
+        spoke.setAttribute('x2', CX + r2 * Math.cos(sa));
+        spoke.setAttribute('y2', CY + r2 * Math.sin(sa));
+        spoke.setAttribute('opacity', gate(T, st) * Math.min(1, p * (1 - p) * 4) * (T < CUES.Core ? 1 : 0));
+      }
+
       var accentsOp = idle ? 1 : MOTION.enter(CUES.Frame + 1.3, CUES.Frame + 2.2)(T);
       R.rotDots.setAttribute('transform', 'rotate(' + (T * 8) + ' ' + CX + ' ' + CY + ')');
       R.dots.setAttribute('opacity', accentsOp * 0.9);
       R.rotHex.setAttribute('transform', 'rotate(' + (-T * 5) + ' ' + CX + ' ' + CY + ')');
       R.outerHex.setAttribute('opacity', accentsOp);
 
+      var orbOp = idle ? 1 : MOTION.enter(CUES.Idle, CUES.Idle + 0.8)(T);
+      for (var o = 0; o < R.orbs.length; o++) {
+        var oa = (-T * 50 + o * 120) * (Math.PI / 180);
+        R.orbs[o].setAttribute('cx', CX + 398 * Math.cos(oa));
+        R.orbs[o].setAttribute('cy', CY + 398 * Math.sin(oa));
+        R.orbs[o].setAttribute('opacity', orbOp * (0.3 + 0.55 * (0.5 + 0.5 * Math.sin(T * 3 + o * 2))));
+      }
+
       var frameDraw = idle ? 1 : MOTION.draw(CUES.Frame, CUES.Frame + 1.7)(T);
       var frame2Draw = idle ? 1 : MOTION.draw(CUES.Frame + 0.3, CUES.Frame + 2)(T);
-      R.frame1.setAttribute('stroke-dashoffset', 100 - frameDraw * 100);
-      R.frame2.setAttribute('stroke-dashoffset', -(100 - frame2Draw * 100));
+      setDraw(R.frame1, frameDraw, false);
+      setDraw(R.frame2, frame2Draw, true);
       R.frameGlint.setAttribute('stroke-dashoffset', -((T * 6) % 100));
       R.frameGlint.setAttribute('opacity', accentsOp * (0.35 + 0.6 * breathe));
+
+      // The comet marks the head of the frame stroke, so it only exists while
+      // that stroke is actually being drawn.
+      var cometOn = frameDraw > 0.01 && frameDraw < 0.99 ? 0.95 : 0;
+      var comet = perim(462, frameDraw);
+      R.cometGlow.setAttribute('cx', comet[0]); R.cometGlow.setAttribute('cy', comet[1]);
+      R.cometCore.setAttribute('cx', comet[0]); R.cometCore.setAttribute('cy', comet[1]);
+      R.cometGlow.setAttribute('opacity', cometOn);
+      R.cometCore.setAttribute('opacity', cometOn);
 
       for (var a = 0; a < R.accents.length; a++) R.accents[a].setAttribute('opacity', accentsOp * (a % 2 ? 0.5 : 0.85));
       for (var vv = 0; vv < R.verts.length; vv++) {
@@ -226,17 +317,30 @@ window.Emblem = (function () {
       });
 
       R.waves.forEach(function (w, i) {
-        var st = CUES.Pulse + i * 0.35;
-        var kk = idle ? 1 : 1 + 0.85 * anim(0, 1, st, st + 1.3, easeOutCubic)(T);
-        var op = idle ? 0 : gate(T, st) * anim(0.75, 0, st, st + 1.3)(T);
+        var wst = CUES.Pulse + i * 0.35;
+        var kk = idle ? 1 : 1 + 0.85 * anim(0, 1, wst, wst + 1.3, easeOutCubic)(T);
+        var op = idle ? 0 : gate(T, wst) * anim(0.75, 0, wst, wst + 1.3)(T);
         w.setAttribute('opacity', op);
         w.setAttribute('transform', 'translate(' + CX + ' ' + CY + ') scale(' + kk + ') translate(' + (-CX) + ' ' + (-CY) + ')');
       });
 
+      var pst = CUES.Pulse + 0.05;
+      for (var ps = 0; ps < R.psparks.length; ps++) {
+        var conf = PSPARKS[ps];
+        var pp = idle ? 0 : gate(T, pst) * anim(0, 1, pst, pst + 1.15 * conf.sp, easeOutCubic)(T);
+        var rr = 340 + 230 * pp;
+        var line = R.psparks[ps];
+        line.setAttribute('x1', CX + rr * Math.cos(conf.a));
+        line.setAttribute('y1', CY + rr * Math.sin(conf.a));
+        line.setAttribute('x2', CX + (rr + 30) * Math.cos(conf.a));
+        line.setAttribute('y2', CY + (rr + 30) * Math.sin(conf.a));
+        line.setAttribute('opacity', idle ? 0 : gate(T, pst) * (1 - pp) * 0.9);
+      }
+
       var ringDraw = idle ? 1 : MOTION.draw(CUES.Core, CUES.Core + 1.5)(T);
       var ringGlow = (idle ? 1 : MOTION.enter(CUES.Core + 0.9, CUES.Core + 1.8)(T)) * (0.55 + 0.45 * breathe);
       R.ringGlow.setAttribute('opacity', ringGlow * 0.6);
-      R.ringMain.setAttribute('stroke-dashoffset', 100 - ringDraw * 100);
+      setDraw(R.ringMain, ringDraw, false);
       R.ringMain.setAttribute('opacity', 0.55 + 0.45 * ringGlow);
       R.ringGlint.setAttribute('stroke-dashoffset', -((T * 16) % 100));
       R.ringGlint.setAttribute('opacity', ringGlow * 0.8);
@@ -245,22 +349,34 @@ window.Emblem = (function () {
       R.facet.setAttribute('opacity', Math.min(1, facetP * 1.4));
       R.facet.setAttribute('transform', 'translate(' + CX + ' ' + CY + ') scale(' + (0.8 + 0.2 * facetP) + ') translate(' + (-CX) + ' ' + (-CY) + ')');
 
+      // Both fire when the last cube face lands: a scale punch on the cube and
+      // a ring thrown off the facet.
+      var impact = idle ? 0 : flare(T, CUES.Core + 1.8, 0.1, 0.5);
+      var rippleP = idle ? 1 : gate(T, CUES.Core + 1.8) * anim(0, 1, CUES.Core + 1.8, CUES.Core + 2.5, easeOutCubic)(T);
+      R.ripple.setAttribute('opacity', (idle ? 1 : gate(T, CUES.Core + 1.8)) * 0.6 * (1 - rippleP));
+      R.ripple.setAttribute('transform', 'translate(' + CX + ' ' + CY + ') scale(' + (1 + 0.3 * rippleP) + ') translate(' + (-CX) + ' ' + (-CY) + ')');
+
       var assembled = idle ? 1 : MOTION.enter(CUES.Core + 1.8, CUES.Core + 2.2)(T);
       var float = Math.sin(T * 1.4) * 7 * assembled;
       var cubeGlow = (8 + 16 * breathe) * assembled + 26 * punch;
+      R.cubeWrap.setAttribute('transform', 'translate(' + CX + ' ' + CY + ') scale(' + (1 + 0.07 * impact) + ') translate(' + (-CX) + ' ' + (-CY) + ')');
       R.cube.setAttribute('transform', 'translate(0 ' + float + ')');
       R.cube.style.filter = 'drop-shadow(0 0 ' + cubeGlow + 'px rgba(110,200,255,.9))';
       R.faces.forEach(function (g, i) {
-        var st = CUES.Core + 0.9 + i * 0.18;
-        var p = idle ? 1 : MOTION.pop(st, st + 0.75)(T);
-        var op = idle ? 1 : MOTION.enter(st, st + 0.4)(T);
+        var fst = CUES.Core + 0.9 + i * 0.18;
+        var p = idle ? 1 : MOTION.pop(fst, fst + 0.75)(T);
+        var op = idle ? 1 : MOTION.enter(fst, fst + 0.4)(T);
         var f = FACES[i];
         g.setAttribute('transform', 'translate(' + (CX + f.from[0] * (1 - p)) + ' ' + (CY + f.from[1] * (1 - p)) + ')');
         g.setAttribute('opacity', op);
       });
       R.topHi.setAttribute('opacity', assembled * (0.12 + 0.3 * breathe));
+      R.rightHi.setAttribute('opacity', assembled * (0.04 + 0.12 * (0.5 + 0.5 * Math.sin(T * 1.1 + 1.3))));
 
       R.flash.setAttribute('opacity', idle ? 0 : flare(T, CUES.Pulse, 0.1, 0.55) * 0.55);
+
+      R.fadeSpark.setAttribute('r', 26 - 18 * anim(0, 1, CUES.Fade + 0.2, CUES.Fade + 1.3)(T));
+      R.fadeSpark.setAttribute('opacity', idle ? 0 : gate(T, CUES.Fade + 0.2) * flare(T, CUES.Fade + 0.2, 0.5, 0.7));
     }
 
     // ── clock ───────────────────────────────────────────────────────────────

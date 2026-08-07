@@ -14,23 +14,25 @@ const HOUR_H = 52;          // must match --hour-h in styles.css
 const DEFAULT_START = 8;    // grid opens at 8am unless events start earlier
 const DEFAULT_END = 20;
 
-// Event block colours, matched to the reference: soft fill, saturated rule.
+// Event block colours. Dark translucent fill with a saturated rule and label:
+// on the dark ground a pale fill reads as a hole punched in the panel, whereas
+// a tinted wash reads as a lit surface.
 const PALETTE = [
-  { bg: '#e8f0fe', fg: '#1967d2' },
-  { bg: '#e6f4ea', fg: '#137333' },
-  { bg: '#f3e8fd', fg: '#6d28d9' },
-  { bg: '#fef0e3', fg: '#c2410c' },
-  { bg: '#fde8e8', fg: '#c5221f' },
-  { bg: '#fef7e0', fg: '#a16207' },
-  { bg: '#e0f2f1', fg: '#00695c' },
+  { bg: 'rgba(56, 189, 248, 0.16)',  fg: '#4cc9f5' },
+  { bg: 'rgba(52, 211, 153, 0.16)',  fg: '#45e0ab' },
+  { bg: 'rgba(167, 139, 250, 0.16)', fg: '#b39bff' },
+  { bg: 'rgba(251, 146, 60, 0.16)',  fg: '#ffab5e' },
+  { bg: 'rgba(251, 90, 118, 0.16)',  fg: '#ff8098' },
+  { bg: 'rgba(251, 191, 36, 0.16)',  fg: '#ffc94d' },
+  { bg: 'rgba(45, 212, 191, 0.16)',  fg: '#3fdccd' },
 ];
 
 const NOTE_COLOURS = [
-  { bg: '#fef7e0', fg: '#8a6d1f' },
-  { bg: '#e8f0fe', fg: '#1b4f9c' },
-  { bg: '#e6f4ea', fg: '#1a6b3c' },
-  { bg: '#f3e8fd', fg: '#5b21b6' },
-  { bg: '#fdeeef', fg: '#a12b34' },
+  { bg: 'rgba(251, 191, 36, 0.10)',  fg: '#ffc94d' },
+  { bg: 'rgba(56, 189, 248, 0.10)',  fg: '#4cc9f5' },
+  { bg: 'rgba(52, 211, 153, 0.10)',  fg: '#45e0ab' },
+  { bg: 'rgba(167, 139, 250, 0.10)', fg: '#b39bff' },
+  { bg: 'rgba(251, 90, 118, 0.10)',  fg: '#ff8098' },
 ];
 
 // ---------- formatting ----------
@@ -572,7 +574,7 @@ function renderNotes() {
       const c = colourFor(n.title, NOTE_COLOURS);
       const tags = n.areas && n.areas.length ? escapeHtml(n.areas.join(' · ')) : '';
       return `<a class="note" href="${escapeHtml(n.url || '#')}" target="_blank" rel="noopener"
-                style="background:${c.bg};color:${c.fg}">
+                style="background:${c.bg};color:${c.fg};border-color:${c.fg}44">
         <div class="note-title">${escapeHtml(n.title)}</div>
         ${tags ? `<div class="note-tags">${tags}</div>` : ''}
         <div class="note-date">${fmt(new Date(n.created), { day: 'numeric', month: 'short', year: 'numeric' })}</div>

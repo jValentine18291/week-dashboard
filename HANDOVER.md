@@ -152,8 +152,23 @@ by fitting fewer event chips per day cell, not by scrolling.
 
 ## Design reference
 
-The visual target was a light card-based dashboard mockup the user supplied:
-white cards on a very light grey ground, blue primary, rounded corners, a
+**Superseded.** The original target was a light card-based mockup: white cards
+on very light grey, blue primary. The user later supplied a dark neon "HUD"
+mockup and asked for the theme to match, so the palette is now a near-black
+ground with cyan and blue accents, glowing card rims and uppercase tracked
+headings. Structure, spacing and layout are unchanged — only colour, glow and
+type treatment moved.
+
+That second mockup also contained a left nav sidebar, a search field, a
+notification bell, an avatar, and Market Watch and News panels. **None of those
+were built.** Each is either a hard constraint above or phase 2, and a mockup
+is not a decision to reverse them. If they are ever wanted, they need deciding
+on their merits, not adopting because a reference image had them.
+
+The description below is the original light reference, kept because the layout
+still derives from it:
+
+White cards on a very light grey ground, blue primary, rounded corners, a
 Google Calendar week grid with colour-coded blocks, a "This Week" checklist
 with a progress bar and priority pills, and coloured sticky-note cards.
 

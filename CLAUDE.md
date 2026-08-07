@@ -128,6 +128,21 @@ These are all load-bearing and all have cost real debugging time. Do not
    views; the week view narrows the same array with `eventsOn()`. Toggling
    views must not hit the server.
 
+## Theme
+
+Dark neon. All colour lives in the `:root` tokens at the top of `styles.css`,
+plus two palettes in `public/app.js` — `PALETTE` for calendar blocks and
+`NOTE_COLOURS` for notes. Those two are written as `rgba()` washes rather than
+solid fills on purpose: a pale fill reads as a hole punched in a dark panel,
+whereas a tinted wash reads as a lit surface.
+
+Check contrast after any colour change; it is measurable, so measure it rather
+than eyeballing. In the console with the dashboard loaded, walk the text nodes
+and compare each against its composited background — and composite translucent
+ancestors properly. Blending a translucent layer as though it were opaque
+produces confident nonsense: it reported the event blocks at 1.03:1 when they
+were actually fine.
+
 ## Conventions
 
 - Notion column names are configurable through `NOTION_*_PROPERTY` env vars.

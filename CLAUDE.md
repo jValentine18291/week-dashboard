@@ -28,7 +28,9 @@ User-facing setup steps: see `SETUP.txt`.
 - **No search bar, notification bell or avatar.** These were in the reference
   mockups and were cut on purpose — single-user app, nothing to notify.
 - **The rail contains only controls that work.** It holds the Month and Week
-  switches and Refresh, and nothing else. The reference mockup showed ten nav
+  switches and Ask, and nothing else. Refresh was removed at the user's
+  request; the topbar button and the five-minute auto-reload both remain, so
+  nothing was lost. The reference mockup showed ten nav
   items — Dashboard, Calendar, Tasks, Notes, Markets, News, Goals, Files,
   Settings, Log out — for pages that do not exist in a single-page app, two of
   which (Goals, Files) are not features in any phase. Do not add nav entries

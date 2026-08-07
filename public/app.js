@@ -704,7 +704,6 @@ document.addEventListener('click', (e) => {
   renderCalendar();
 });
 
-$('rail-refresh').addEventListener('click', () => load(true));
 
 // The rail loops the full 15s choreography continuously — ignition, frame draw,
 // cube assembly, pulse, fade, repeat. The emblem's own `full` mode already

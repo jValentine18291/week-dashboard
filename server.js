@@ -215,6 +215,22 @@ function chatAllowed() {
   return true;
 }
 
+// Maps an upstream status to something the user can act on. The full error is
+// in the server log; this is what reaches the browser.
+function describeChatFailure(err) {
+  const s = err && err.status;
+  if (s === 400) return 'The provider rejected the request (400). The model name is the usual cause.';
+  if (s === 401 || s === 403) {
+    return `The provider rejected the API key (${s}). Check the key is correct and, ` +
+      'if it has IP or referrer restrictions, that this server is allowed.';
+  }
+  if (s === 404) return 'The provider had no such model or endpoint (404). Check OPENAI_MODEL and OPENAI_BASE_URL.';
+  if (s === 429) return 'Rate limited or out of quota at the provider (429). Wait, or check your plan limits.';
+  if (s >= 500) return `The provider is having trouble (${s}). Try again shortly.`;
+  if (s) return `The provider returned ${s}.`;
+  return 'Could not reach the provider — the network call itself failed.';
+}
+
 app.post('/api/chat', requireAuth, async (req, res) => {
   if (!chatConfig.apiKey) {
     return res.status(503).json({ error: 'Chat is not configured. Set OPENAI_API_KEY and redeploy.' });
@@ -237,8 +253,10 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     send({ done: true });
   } catch (err) {
     console.error('Chat failed:', err.message);
-    // The key can appear in upstream error text; never relay it to the browser.
-    send({ error: 'The assistant could not be reached.' });
+    // Never relay the upstream body — it can echo request material. Relaying
+    // the status alone is safe and turns an opaque failure into an actionable
+    // one, which "could not be reached" was not.
+    send({ error: describeChatFailure(err) });
   }
   res.end();
 });

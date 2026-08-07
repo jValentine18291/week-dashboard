@@ -170,7 +170,8 @@ function renderCalendar() {
   const month = VIEW === 'month';
   $('cal-month').hidden = !month;
   $('cal-week').hidden = month;
-  document.querySelectorAll('.vt').forEach((b) =>
+  // Covers both the card-header toggle and the rail, so the two never disagree.
+  document.querySelectorAll('[data-view]').forEach((b) =>
     b.classList.toggle('is-active', b.dataset.view === VIEW));
 
   if (month) renderMonth();
@@ -651,12 +652,24 @@ $('signin').addEventListener('click', signIn);
 $('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') signIn(); });
 $('refresh').addEventListener('click', () => load(true));
 
-$('viewtoggle').addEventListener('click', (e) => {
-  const btn = e.target.closest('.vt');
+// Delegated, so the card-header toggle and the rail share one path.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-view]');
   if (!btn || btn.dataset.view === VIEW) return;
   VIEW = btn.dataset.view;
   localStorage.setItem('cal-view', VIEW);
   renderCalendar();
+});
+
+$('rail-refresh').addEventListener('click', () => load(true));
+
+$('rail-logout').addEventListener('click', async () => {
+  try {
+    await fetch('/api/logout', { method: 'POST' });
+  } finally {
+    PAYLOAD = null;
+    showGate();
+  }
 });
 
 // Redraw when the grid's box changes, so a resized window re-fits its chips.

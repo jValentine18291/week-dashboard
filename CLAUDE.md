@@ -26,7 +26,13 @@ User-facing setup steps: see `SETUP.txt`.
 - **No build step.** Plain Express, vanilla JS, hand-written CSS. Do not
   introduce React, Vite, Tailwind, TypeScript or a bundler.
 - **No search bar, notification bell or avatar.** These were in the reference
-  mockup and were cut on purpose — single-user app, nothing to notify.
+  mockups and were cut on purpose — single-user app, nothing to notify.
+- **The rail contains only controls that work.** It holds the Month and Week
+  switches, Refresh and Log out, and nothing else. The reference mockup showed
+  ten nav items — Dashboard, Calendar, Tasks, Notes, Markets, News, Goals,
+  Files, Settings, Log out — for pages that do not exist in a single-page app,
+  two of which (Goals, Files) are not features in any phase. Do not add nav
+  entries for destinations that are not real; a dead link reads as a bug.
 - **Auth fails closed.** With no `DASHBOARD_PASSWORD` set, `/api/dashboard` is
   served only to a loopback caller. Anything else gets a 503. Do not "simplify"
   this back to `if (!DASHBOARD_PASSWORD) return next()` — that shipped, and the
@@ -142,6 +148,33 @@ and compare each against its composited background — and composite translucent
 ancestors properly. Blending a translucent layer as though it were opaque
 produces confident nonsense: it reported the event blocks at 1.03:1 when they
 were actually fine.
+
+## Motion
+
+Ambient, but the dashboard re-renders itself every five minutes.
+
+**Entrance animations attach only to elements that survive a render** — the
+rail, the topbar, the three cards, the gate card. Anything animated *inside* a
+panel (day cells, event blocks, task rows, note cards) is rebuilt by that
+render and would replay its entrance every five minutes, flashing the screen
+while the user is reading it. This is the reason `.card` carries the animation
+and `.mon-cell` does not.
+
+Ambient loops (`breathe`, `shimmer`, `seamSweep`, `nowPulse`) are on persistent
+elements for the same reason, so they run continuously instead of restarting.
+
+`prefers-reduced-motion: reduce` disables every animation and transition
+globally. None of the motion is load-bearing, so there is nothing to preserve.
+
+To check a change has not reintroduced the replay, re-render and confirm the
+entrance animations did not restart:
+
+```js
+const t = () => document.getAnimations().filter(a => a.animationName === 'riseIn')
+  .map(a => Math.round(a.currentTime));
+const before = t(); renderThisWeek(); renderNotes(); renderCalendar();
+console.log(before, t());   // must not reset to 0
+```
 
 ## Conventions
 

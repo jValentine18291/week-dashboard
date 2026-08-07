@@ -178,11 +178,20 @@ ground with cyan and blue accents, glowing card rims and uppercase tracked
 headings. Structure, spacing and layout are unchanged — only colour, glow and
 type treatment moved.
 
-That second mockup also contained a left nav sidebar, a search field, a
-notification bell, an avatar, and Market Watch and News panels. **None of those
-were built.** Each is either a hard constraint above or phase 2, and a mockup
-is not a decision to reverse them. If they are ever wanted, they need deciding
-on their merits, not adopting because a reference image had them.
+That second mockup also contained a search field, a notification bell, an
+avatar, a quick-add button, a "take a quick note" box, apparently-tickable
+checkboxes, and Market Watch and News panels. **None of those were built.** The
+chrome is a hard constraint; the write affordances are what the read-only rule
+names verbatim; the two panels are phase 2. A mockup is not a decision to
+reverse any of them.
+
+**The rail was built, and was the exception.** No written constraint covered a
+sidebar — that one was a judgement call, so it went back to the user rather
+than being refused on the docs' authority. It ships holding only controls that
+do something: Month, Week, Refresh, Log out. The mockup's ten nav items pointed
+at pages that do not exist, and two of them (Goals, Files) are not features in
+any phase. `POST /api/logout` was added to make Log out real; it clears the
+session cookie and touches neither Notion nor Google.
 
 The description below is the original light reference, kept because the layout
 still derives from it:

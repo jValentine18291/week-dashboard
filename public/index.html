@@ -25,6 +25,55 @@
 </div>
 
 <div id="app" hidden>
+
+  <aside class="rail">
+    <div class="rail-brand" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7z"></path>
+        <path d="M12 8.5 16 11v4l-4 2.5L8 15v-4z"></path>
+      </svg>
+    </div>
+
+    <nav class="rail-nav" aria-label="Calendar view">
+      <button class="rail-item" data-view="month" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+          <path d="M3 10h18M8 3v4M16 3v4"></path>
+        </svg>
+        <span>Month</span>
+      </button>
+      <button class="rail-item" data-view="week" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="16" rx="2"></rect>
+          <path d="M9 5v16M15 5v16"></path>
+        </svg>
+        <span>Week</span>
+      </button>
+      <button class="rail-item" id="rail-refresh" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 11a8 8 0 1 0-2.3 5.7"></path>
+          <path d="M20 5v6h-6"></path>
+        </svg>
+        <span>Refresh</span>
+      </button>
+    </nav>
+
+    <div class="rail-foot">
+      <button class="rail-item" id="rail-logout" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v9"></path>
+          <path d="M6.5 6.8a8 8 0 1 0 11 0"></path>
+        </svg>
+        <span>Log out</span>
+      </button>
+    </div>
+  </aside>
+
   <header class="topbar">
     <div>
       <h1 id="greeting" class="greeting">Good morning</h1>

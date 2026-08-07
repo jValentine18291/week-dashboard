@@ -85,6 +85,17 @@ app.post('/api/login', (req, res) => {
   res.json({ ok: true });
 });
 
+// Session teardown only — this clears a cookie, it does not write to Notion or
+// Google. The read-only constraint is about the data sources, not the gate.
+app.post('/api/logout', (req, res) => {
+  res.clearCookie('session', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: IS_PRODUCTION,
+  });
+  res.json({ ok: true });
+});
+
 app.get('/api/session', (req, res) => {
   // Mirrors requireAuth: open only for a loopback caller with no password set.
   const unprotected = !DASHBOARD_PASSWORD;

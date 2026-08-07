@@ -706,21 +706,15 @@ document.addEventListener('click', (e) => {
 
 $('rail-refresh').addEventListener('click', () => load(true));
 
-// The rail plays the full 15s choreography once — ignition, frame, cube
-// assembly, pulse — then settles into the idle breathe. Looping `full` forever
-// would fade the logo out and re-ignite it every 15 seconds next to the
-// calendar, which is a lot of movement for a screen left open all day.
+// The rail loops the full 15s choreography continuously — ignition, frame draw,
+// cube assembly, pulse, fade, repeat. The emblem's own `full` mode already
+// wraps, so this needs no swap logic.
+//
+// This is the user's explicit preference. It does mean the logo fades out and
+// re-ignites every 15 seconds; do not "fix" that back to idle or to a
+// once-then-settle swap without asking him first.
 if (window.Emblem) {
-  const host = $('rail-emblem');
-  let inst = Emblem.create(host, {
-    size: 96,
-    mode: 'full',
-    transparentBg: true,
-    onLoop: () => {
-      inst.destroy();
-      inst = Emblem.create(host, { size: 96, mode: 'idle', transparentBg: true });
-    },
-  });
+  Emblem.create($('rail-emblem'), { size: 96, mode: 'full', transparentBg: true });
 }
 
 setInterval(() => { if (PAYLOAD) tickClock(); }, 1000);

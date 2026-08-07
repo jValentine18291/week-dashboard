@@ -188,15 +188,18 @@ offers a three.js cube; we do not take it — a WebGL dependency for a 64px
 decoration is not worth it, and reusing the emblem makes the boot screen and
 the dashboard visibly the same system.
 
-**The rail plays `full` once, then swaps itself to `idle`** via `onLoop`. Not
-`full` on a loop: that fades the logo out and re-ignites it every 15 seconds
-beside the calendar. Not `idle` from the start either — the user asked to see
-the whole choreography, and idle skips the ignition and assembly.
+**The rail loops `full` continuously** — ignition, frame draw, cube assembly,
+pulse, fade, repeat. This is the user's explicit choice, made after seeing both
+alternatives: `idle` (which skips the ignition and assembly entirely) and
+once-then-settle. He wants the whole sequence playing all the time. The
+trade-off — the logo fades out and re-ignites every 15 seconds beside the
+calendar — was raised and accepted. Do not quietly revert it.
 
-That swap is why `emblem.js` has a `killed` flag. `onLoop` fires from inside
-the rAF step, and the step schedules the next frame *after* calling it — so an
-`onLoop` that destroys the instance would otherwise leave the old, detached SVG
-animating forever. Verified: zero pending frames after teardown.
+`emblem.js` carries a `killed` flag regardless. `onLoop` fires from inside the
+rAF step and the step schedules its next frame *after* calling it, so any
+`onLoop` that destroys the instance would leave a detached SVG animating
+forever. The rail no longer uses `onLoop`, but `destroy()` is still called on
+boot teardown, so the guard stays.
 
 ## Theme
 

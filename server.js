@@ -164,7 +164,14 @@ app.get('/api/dashboard', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/healthz', (req, res) => res.send('ok'));
+// Reports the commit it was built from. "Is the new code actually live?" was
+// otherwise only answerable by grepping served assets, and a host's Redeploy
+// button may re-run the previous build rather than fetch the latest commit.
+// A short SHA of a private repo discloses nothing useful on its own.
+app.get('/healthz', (req, res) => {
+  const sha = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || '').slice(0, 7);
+  res.type('text/plain').send(sha ? `ok ${sha}` : 'ok');
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 

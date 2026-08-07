@@ -12,6 +12,7 @@ const path = require('path');
 
 const { fetchCalendarEvents } = require('./lib/calendar');
 const { fetchTasks, fetchNotes } = require('./lib/notion');
+const { streamChat, DEFAULT_BASE_URL } = require('./lib/chat');
 const week = require('./lib/week');
 
 const app = express();
@@ -33,6 +34,19 @@ const notionConfig = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+};
+
+// The chat relay is a separate concern from the dashboard: it is never given
+// calendar, task or note data. See lib/chat.js.
+const chatConfig = {
+  apiKey: process.env.OPENAI_API_KEY,
+  baseUrl: process.env.OPENAI_BASE_URL || DEFAULT_BASE_URL,
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  maxTokens: Number(process.env.OPENAI_MAX_TOKENS || 800),
+  systemPrompt: process.env.OPENAI_SYSTEM_PROMPT ||
+    'You are a concise assistant embedded in a personal dashboard. ' +
+    'You have no access to the user\'s calendar, tasks or notes — if asked ' +
+    'about them, say so plainly. Answer general questions directly.',
 };
 
 app.use(cookieParser(COOKIE_SECRET));
@@ -179,6 +193,51 @@ app.get('/api/dashboard', requireAuth, async (req, res) => {
 // otherwise only answerable by grepping served assets, and a host's Redeploy
 // button may re-run the previous build rather than fetch the latest commit.
 // A short SHA of a private repo discloses nothing useful on its own.
+// --- chat ---------------------------------------------------------------
+
+// Single-user app, so one global window is enough. This exists because the
+// dashboard is internet-facing behind one password: anyone who gets through
+// the gate would otherwise have an unmetered relay on the owner's bill.
+const CHAT_WINDOW_MS = 10 * 60 * 1000;
+const CHAT_MAX = 30;
+let chatHits = [];
+
+function chatAllowed() {
+  const now = Date.now();
+  chatHits = chatHits.filter((t) => now - t < CHAT_WINDOW_MS);
+  if (chatHits.length >= CHAT_MAX) return false;
+  chatHits.push(now);
+  return true;
+}
+
+app.post('/api/chat', requireAuth, async (req, res) => {
+  if (!chatConfig.apiKey) {
+    return res.status(503).json({ error: 'Chat is not configured. Set OPENAI_API_KEY and redeploy.' });
+  }
+  if (!chatAllowed()) {
+    return res.status(429).json({ error: 'Too many messages. Try again in a few minutes.' });
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+
+  try {
+    await streamChat(chatConfig, req.body && req.body.messages, (delta) => send({ delta }));
+    send({ done: true });
+  } catch (err) {
+    console.error('Chat failed:', err.message);
+    // The key can appear in upstream error text; never relay it to the browser.
+    send({ error: 'The assistant could not be reached.' });
+  }
+  res.end();
+});
+
 app.get('/healthz', (req, res) => {
   const sha = (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.GIT_COMMIT_SHA || '').slice(0, 7);
   res.type('text/plain').send(sha ? `ok ${sha}` : 'ok');

@@ -98,6 +98,24 @@ If your columns are named differently, do not rename them — set the
 NOTION_*_PROPERTY lines in .env instead.
 
 
+STEP 6b — the assistant (entirely optional)
+-------------------------------------------
+The "Ask" button in the sidebar opens a chat drawer for general questions.
+It is NOT connected to your dashboard and never sees your calendar, tasks
+or notes.
+
+To switch it on:
+
+1. Get an API key from platform.openai.com > API keys
+2. Add OPENAI_API_KEY to your .env (and to Railway later)
+3. Restart
+
+Leave OPENAI_API_KEY blank and the feature stays off; nothing else changes.
+
+This one costs money per message, unlike everything else in this app.
+The relay is capped at 30 messages per 10 minutes as a safety net.
+
+
 STEP 7 — put it online (only after step 6 works)
 ------------------------------------------------
 1. Push this folder to a GitHub repo

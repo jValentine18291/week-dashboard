@@ -201,6 +201,34 @@ rAF step and the step schedules its next frame *after* calling it, so any
 forever. The rail no longer uses `onLoop`, but `destroy()` is still called on
 boot teardown, so the guard stays.
 
+## Assistant
+
+A chat drawer, `lib/chat.js` + `POST /api/chat` + `public/chat.{js,css}`. Added
+at the user's request as a scratchpad for general questions.
+
+- **It is never given dashboard data.** Not calendar, not tasks, not notes. The
+  user asked for a general assistant, explicitly not one that reads his data,
+  and that is the whole reason the privacy question does not arise. `sanitise()`
+  strips every field except `role` and `content`, so nothing can ride along on a
+  message object. If context is ever wanted, that is a decision for him, not a
+  refactor to slip in.
+- **The read-only constraint is untouched** — the relay cannot reach Notion or
+  Google, and could not write to them if it tried.
+- **The key never leaves the server.** It lives in `OPENAI_API_KEY` and is used
+  only in the route. Upstream error text can contain key material, so the route
+  returns a generic message rather than relaying it.
+- **Rate limited** to 30 messages per 10 minutes, process-wide. The dashboard is
+  internet-facing behind one password; without this, anyone through the gate has
+  a metered relay on the owner's bill.
+- **Optional.** With no `OPENAI_API_KEY` the route returns 503 and the rest of
+  the app is unaffected.
+- `OPENAI_BASE_URL` exists so the relay can point at any OpenAI-compatible
+  endpoint. It is also what makes the path testable against a mock upstream
+  without a real key or a real bill.
+
+The drawer is an **overlay**, not a fourth panel. Three panels already fill the
+viewport; a column would squeeze the calendar and break the one-screen rule.
+
 ## Theme
 
 Dark HUD. All colour lives in the `:root` tokens at the top of `styles.css`,

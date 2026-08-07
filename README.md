@@ -93,6 +93,11 @@ marked secure.
 
 ## Notes on behaviour
 
+- **Ask** in the sidebar opens an assistant drawer for general questions.
+  It is deliberately **not** connected to your dashboard — it cannot see your
+  calendar, tasks or notes, and nothing from them is ever sent. Conversations
+  live in the browser only and are gone on reload. Leave `OPENAI_API_KEY` blank
+  to switch the whole feature off.
 - **The calendar opens on the month**, with a Month/Week toggle in its header.
   Your choice is remembered in the browser. The month grid runs Monday-first
   and greys the leading and trailing days of neighbouring months, which still

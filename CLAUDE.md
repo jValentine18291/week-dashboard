@@ -46,8 +46,15 @@ User-facing setup steps: see `SETUP.txt`.
   fine. The guard must not key on `NODE_ENV` alone either: that deploy had
   `NODE_ENV` unset too, so a production-only check would have been disabled by
   the same missing configuration it exists to catch.
-- **Phase 1 scope is calendar + tasks + notes.** Market Watch and News are
-  phase 2 and should not be built until asked.
+- **Scope is calendar + tasks + news.** News was built at the user's request
+  and **replaced the Notes panel** — he asked for the swap and said he would
+  consider re-adding Notes later. Market Watch is still unbuilt and should not
+  be started until asked.
+
+  Bringing Notes back is three steps, all still in place: `fetchNotes` in
+  `lib/notion.js` is untouched, add it back to the `Promise.allSettled` in
+  `buildPayload`, and give it a panel. The layout would need a third area —
+  the bottom row currently holds News alone.
 
 ## Landmines
 
@@ -202,6 +209,30 @@ rAF step and the step schedules its next frame *after* calling it, so any
 `onLoop` that destroys the instance would leave a detached SVG animating
 forever. The rail no longer uses `onLoop`, but `destroy()` is still called on
 boot teardown, so the guard stays.
+
+## News
+
+`lib/news.js` — RSS, not a news API (NewsAPI's free tier is development-only;
+see HANDOVER phase 2 research). Parsed by hand rather than with an XML
+dependency, matching how Notion and chat are done. Feeds are configurable via
+`NEWS_FEEDS` (comma-separated); the default pair is CNA Singapore and BBC World.
+
+Things that are load-bearing, all measured against the live feeds:
+
+- **`&amp;` is decoded last** in `decode()`. Decode it first and `&amp;lt;`
+  becomes a real `<`, letting feed content inject markup.
+- **`media:thumbnail` attribute order differs by feed** — CNA puts `url` first,
+  BBC puts it last. Match the attribute, never a position.
+- **Many feeds carry no image at all.** Straits Times has none. The blank
+  thumbnail fallback is not decoration; without it rows lose their alignment.
+- **Source names come from `sourceName()`, not the channel title.** CNA titles
+  its channel "Latest News", which is useless once two feeds are interleaved.
+- One dead feed must not blank the panel: feeds are settled independently, and
+  only an all-feeds failure throws.
+
+`.card-news` has a **`max-height: 176px`**. Its grid row is `auto`, so without
+a ceiling the feed grows with its content and eats the calendar. Measured at
+1920×950: 176px keeps the month grid at 4 chips per day, 190px drops it to 3.
 
 ## Assistant
 

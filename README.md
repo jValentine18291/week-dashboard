@@ -109,7 +109,7 @@ marked secure.
   marked with a `↳` so you can see where the event actually started. A holiday
   entered as 10–13 August covers the 10th, 11th and 12th — Google's end date is
   the morning you get back, not the last day away.
-- **Tasks and notes stay weekly** even while the calendar shows a month, so the
+- **Tasks stay weekly** even while the calendar shows a month, so the
   This Week progress bar keeps measuring a week.
 - **The week runs Monday to Sunday**, in the timezone set by `TIMEZONE`.
 - **Data is cached for 60 seconds.** The Refresh button bypasses the cache.

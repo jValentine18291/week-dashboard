@@ -186,12 +186,6 @@ body {
   box-shadow: inset 2px 0 0 var(--blue), 0 0 18px rgba(34, 211, 238, 0.12);
 }
 
-#rail-logout:hover {
-  color: #ff8098;
-  background: rgba(251, 90, 118, 0.10);
-  border-color: rgba(251, 90, 118, 0.35);
-}
-
 button { font-family: inherit; }
 
 /* ---------- login ---------- */
@@ -318,7 +312,7 @@ button:focus-visible,
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas:
     "cal   week"
-    "notes week";
+    "news  week";
   gap: var(--gap);
   padding: 0 20px 16px;
   min-height: 0;
@@ -326,7 +320,14 @@ button:focus-visible,
 
 .card-calendar { grid-area: cal; }
 .card-week { grid-area: week; }
-.card-notes { grid-area: notes; }
+/* Capped on purpose. This row is `auto`, so without a ceiling the feed grows
+   with its content and takes the height straight out of the calendar above it.
+   Measured at 1920x950: up to 176px keeps the month grid at 4 chips per day;
+   190px drops it to 3. The remaining stories scroll inside the panel. */
+.card-news {
+  grid-area: news;
+  max-height: 176px;
+}
 
 /* The border is a gradient, not a flat colour: two background layers, the panel
    fill clipped to padding-box and the rim clipped to border-box, with a
@@ -490,7 +491,7 @@ button:focus-visible,
    than by reading. Values are reused from the pill palette, not invented. */
 .icon-cal   { background: rgba(56, 189, 248, 0.14); color: #4cc9f5; box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.3); }
 .icon-week  { background: rgba(167, 139, 250, 0.14); color: #b39bff; box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.3); }
-.icon-notes { background: rgba(251, 191, 36, 0.14); color: #ffc94d; box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.3); }
+.icon-news  { background: rgba(167, 139, 250, 0.14); color: #b39bff; box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.3); }
 
 .card-error {
   margin: 0;
@@ -962,30 +963,88 @@ button:focus-visible,
 .wk-detail a { color: var(--blue); text-decoration: none; }
 .wk-detail a:hover { text-decoration: underline; }
 
-/* ---------- notes ---------- */
+/* ---------- news ---------- */
 
-.notes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 9px;
-  padding: 2px 14px 14px;
+/* An intelligence feed rather than a list of cards: rows separated by hairlines,
+   scrolling inside the panel so the page cannot grow. */
+.news-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 0 2px;
 }
 
-.note {
-  display: block;
+.news-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 14px;
   text-decoration: none;
-  border-radius: 9px;
-  padding: 10px 11px;
-  min-height: 74px;
-  border: 1px solid transparent;
-  transition: transform 120ms ease;
+  border-top: 1px solid var(--hair);
+  position: relative;
+  transition: background 140ms cubic-bezier(.22, 1, .36, 1);
 }
 
-.note:hover { transform: translateY(-2px); filter: brightness(1.25); }
+.news-item:first-child { border-top: none; }
+.news-item:hover { background: rgba(0, 200, 255, .05); }
 
-.note-title { font-size: 13px; font-weight: 600; line-height: 1.35; margin-bottom: 6px; }
-.note-tags { font-size: 11px; opacity: 0.75; margin-bottom: 8px; }
-.note-date { font-size: 11px; opacity: 0.6; }
+.news-item:hover::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--blue);
+  box-shadow: 0 0 8px var(--blue);
+}
+
+.news-thumb {
+  width: 46px;
+  height: 34px;
+  flex: 0 0 46px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(0, 200, 255, .22);
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+}
+
+/* Many feeds carry no image at all — Straits Times has none. A tinted source
+   initial keeps the row aligned instead of leaving a hole. */
+.news-thumb.is-blank {
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+
+.news-body { flex: 1; min-width: 0; }
+
+.news-title {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.news-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 9px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.news-source { font-weight: 700; }
+.news-dot { width: 3px; height: 3px; background: var(--ink-3); border-radius: 50%; flex: 0 0 3px; }
+.news-ago { color: var(--ink-3); font-variant-numeric: tabular-nums; }
 
 .empty { padding: 18px 14px; font-size: 12.5px; color: var(--ink-3); }
 
@@ -1035,7 +1094,7 @@ button:focus-visible,
 .card { animation: riseIn 420ms cubic-bezier(.22,1,.36,1) backwards; }
 .card-calendar { animation-delay: 200ms; }
 .card-week     { animation-delay: 280ms; }
-.card-notes    { animation-delay: 420ms; }
+.card-news     { animation-delay: 420ms; }
 
 /* The emblem does its own breathing — do not add a second one on top. */
 

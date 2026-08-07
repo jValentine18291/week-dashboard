@@ -13,6 +13,7 @@ const path = require('path');
 const { fetchCalendarEvents } = require('./lib/calendar');
 const { fetchTasks, fetchNotes } = require('./lib/notion');
 const { streamChat, DEFAULT_BASE_URL } = require('./lib/chat');
+const { fetchNews } = require('./lib/news');
 const week = require('./lib/week');
 
 const app = express();
@@ -38,6 +39,13 @@ const notionConfig = {
 
 // The chat relay is a separate concern from the dashboard: it is never given
 // calendar, task or note data. See lib/chat.js.
+// Comma-separated RSS URLs. Blank falls back to the shipped pair (Singapore
+// and world) — see lib/news.js.
+const newsFeeds = (process.env.NEWS_FEEDS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const chatBaseUrl = process.env.OPENAI_BASE_URL || DEFAULT_BASE_URL;
 
 const chatConfig = {
@@ -145,10 +153,13 @@ async function buildPayload() {
   // bar measure the current week, not the month the calendar happens to show.
   // Each source is settled independently: a broken calendar feed should not
   // take the tasks panel down with it.
-  const [events, tasks, notes] = await Promise.allSettled([
+  // Notes is deliberately absent: the panel was replaced by News at the user's
+  // request, so fetching it would be a Notion call nobody reads. lib/notion.js
+  // still exports fetchNotes — see CLAUDE.md for how to bring the panel back.
+  const [events, tasks, news] = await Promise.allSettled([
     fetchCalendarEvents(process.env.GOOGLE_CALENDAR_ICS_URL, gridStart, gridEnd),
     fetchTasks(notionConfig, week.toLocalISODate(end)),
-    fetchNotes(notionConfig),
+    fetchNews(newsFeeds, 8),
   ]);
 
   const unwrap = (r, label) => {
@@ -175,7 +186,7 @@ async function buildPayload() {
     },
     calendar: unwrap(events, 'Calendar'),
     tasks: unwrap(tasks, 'Tasks'),
-    notes: unwrap(notes, 'Notes'),
+    news: unwrap(news, 'News'),
   };
 }
 

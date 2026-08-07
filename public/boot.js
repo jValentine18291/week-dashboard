@@ -30,12 +30,14 @@ window.Boot = (function () {
       icon: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4' },
     { id: 'tasks', col: 'l', name: 'TASK ENGINE', desc: 'Weekly tasks & priorities', colour: '#4cc3ff',
       icon: 'M3.5 7.5l2 2 3.5-3.5M3.5 17.5l2 2 3.5-3.5M13 7h7.5M13 18h7.5' },
-    { id: 'notes', col: 'l', name: 'NOTES CACHE', desc: 'Notion workspace', colour: '#4cc3ff',
-      icon: 'M5 3h8l6 6v12H5zM13 3v6h6M8 13.5h7M8 17.5h4.5' },
+    { id: 'news', col: 'l', name: 'NEWS STREAM', desc: 'RSS intelligence feeds', colour: '#4cc3ff',
+      icon: 'M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3a15 15 0 010 18a15 15 0 010-18' },
     { id: 'market', col: 'r', name: 'MARKET FEED', desc: 'Not provisioned', colour: '#a78bfa',
       icon: 'M3 17l5-6 4 4 5-8 4 5', standby: true },
-    { id: 'news', col: 'r', name: 'NEWS STREAM', desc: 'Not provisioned', colour: '#a78bfa',
-      icon: 'M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3a15 15 0 010 18a15 15 0 010-18', standby: true }
+    // Notes moved to standby when its panel was replaced by News. The Notion
+    // reader still exists; only the panel is gone.
+    { id: 'notes', col: 'r', name: 'NOTES CACHE', desc: 'Panel deferred', colour: '#a78bfa',
+      icon: 'M5 3h8l6 6v12H5zM13 3v6h6M8 13.5h7M8 17.5h4.5', standby: true }
   ];
 
   var CIRCUIT = [

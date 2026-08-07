@@ -27,13 +27,6 @@ const PALETTE = [
   { bg: 'rgba(45, 212, 191, 0.16)',  fg: '#3fdccd' },
 ];
 
-const NOTE_COLOURS = [
-  { bg: 'rgba(251, 191, 36, 0.10)',  fg: '#ffc94d' },
-  { bg: 'rgba(56, 189, 248, 0.10)',  fg: '#4cc9f5' },
-  { bg: 'rgba(52, 211, 153, 0.10)',  fg: '#45e0ab' },
-  { bg: 'rgba(167, 139, 250, 0.10)', fg: '#b39bff' },
-  { bg: 'rgba(251, 90, 118, 0.10)',  fg: '#ff8098' },
-];
 
 // ---------- formatting ----------
 
@@ -559,31 +552,52 @@ function wireWeekDetails(items) {
 
 // ---------- notes ----------
 
-function renderNotes() {
-  const notes = PAYLOAD.notes.data || [];
-  const el = $('notes');
-  $('notes-meta').textContent = notes.length ? `${notes.length} most recent` : '';
+// Relative time, because "2h ago" is what you actually want from a feed.
+function agoOf(iso) {
+  if (!iso) return '';
+  const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+}
 
-  if (!notes.length) {
-    el.innerHTML = '<p class="empty">No notes yet.</p>';
-    showError('notes-error', PAYLOAD.notes.error);
+function renderNews() {
+  const items = PAYLOAD.news.data || [];
+  const el = $('news');
+  $('news-meta').textContent = items.length ? `${items.length} latest` : '';
+
+  if (!items.length) {
+    el.innerHTML = '<p class="empty">No stories right now.</p>';
+    showError('news-error', PAYLOAD.news.error);
     return;
   }
 
-  el.innerHTML = notes
+  el.innerHTML = items
     .map((n) => {
-      const c = colourFor(n.title, NOTE_COLOURS);
-      const tags = n.areas && n.areas.length ? escapeHtml(n.areas.join(' · ')) : '';
-      return `<a class="note" href="${escapeHtml(n.url || '#')}" target="_blank" rel="noopener"
-                style="background:${c.bg};color:${c.fg};border-color:${c.fg}44">
-        <div class="note-title">${escapeHtml(n.title)}</div>
-        ${tags ? `<div class="note-tags">${tags}</div>` : ''}
-        <div class="note-date">${fmt(new Date(n.created), { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+      // Many feeds carry no image (see HANDOVER phase 2 research), so the
+      // fallback is a source-tinted initial rather than a broken frame.
+      const c = colourFor(n.source || '', PALETTE);
+      const thumb = n.image
+        ? `<span class="news-thumb" style="background-image:url('${escapeHtml(n.image)}')"></span>`
+        : `<span class="news-thumb is-blank" style="color:${c.fg};background:${c.bg}">${escapeHtml((n.source || '?').slice(0, 2).toUpperCase())}</span>`;
+
+      return `<a class="news-item" href="${escapeHtml(n.link || '#')}" target="_blank" rel="noopener">
+        ${thumb}
+        <span class="news-body">
+          <span class="news-title">${escapeHtml(n.title)}</span>
+          <span class="news-meta">
+            <span class="news-source" style="color:${c.fg}">${escapeHtml(n.source || '')}</span>
+            <span class="news-dot"></span>
+            <span class="news-ago">${escapeHtml(agoOf(n.published))}</span>
+          </span>
+        </span>
       </a>`;
     })
     .join('');
 
-  showError('notes-error', PAYLOAD.notes.error);
+  showError('news-error', PAYLOAD.news.error);
 }
 
 // ---------- shell ----------
@@ -651,7 +665,7 @@ async function load(force = false) {
     boot.progress(70);
     boot.module('calendar', !PAYLOAD.calendar.error);
     boot.module('tasks', !PAYLOAD.tasks.error);
-    boot.module('notes', !PAYLOAD.notes.error);
+    boot.module('news', !PAYLOAD.news.error);
     boot.progress(95);
   }
 
@@ -660,7 +674,7 @@ async function load(force = false) {
 
   renderHeader();
   renderThisWeek();
-  renderNotes();
+  renderNews();
   // Last on purpose. The month grid measures its own box to decide how many
   // chips fit in a day cell, so the panels that share the layout have to claim
   // their height first or it measures a box it is about to lose.

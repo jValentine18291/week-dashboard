@@ -222,8 +222,9 @@ function describeChatFailure(err) {
   // Google returns 400 — not 401 — for a bad or truncated API key. Measured:
   // a truncated, bogus or empty key all give 400. So the key is named first.
   if (s === 400) {
-    return 'The provider rejected the request (400). With Google this usually means the ' +
-      'API key is wrong or was truncated when pasted; an invalid model name gives the same code. ' +
+    return 'The provider rejected the request (400). With Google this usually means the API ' +
+      'key value is wrong — too short from a clipped paste, or too long because more than ' +
+      'the key itself ended up in the field. An invalid model name gives the same code. ' +
       'Compare chat_key_len on /healthz against your real key length.';
   }
   if (s === 401 || s === 403) {

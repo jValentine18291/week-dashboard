@@ -219,7 +219,13 @@ function chatAllowed() {
 // in the server log; this is what reaches the browser.
 function describeChatFailure(err) {
   const s = err && err.status;
-  if (s === 400) return 'The provider rejected the request (400). The model name is the usual cause.';
+  // Google returns 400 — not 401 — for a bad or truncated API key. Measured:
+  // a truncated, bogus or empty key all give 400. So the key is named first.
+  if (s === 400) {
+    return 'The provider rejected the request (400). With Google this usually means the ' +
+      'API key is wrong or was truncated when pasted; an invalid model name gives the same code. ' +
+      'Compare chat_key_len on /healthz against your real key length.';
+  }
   if (s === 401 || s === 403) {
     return `The provider rejected the API key (${s}). Check the key is correct and, ` +
       'if it has IP or referrer restrictions, that this server is allowed.';
@@ -278,6 +284,10 @@ app.get('/healthz', (req, res) => {
     `chat=${chatConfig.apiKey ? 'set' : 'unset'}`,
     `chat_host=${chatConfig.apiKey ? host : '-'}`,
     `chat_model=${chatConfig.apiKey ? chatConfig.model : '-'}`,
+    // Length only, never the value. A key's length is a property of its format
+    // rather than secret material, and it is the one thing that makes a
+    // truncated paste — which Google reports as a generic 400 — visible.
+    `chat_key_len=${chatConfig.apiKey ? chatConfig.apiKey.length : 0}`,
   ];
   res.type('text/plain').send(parts.join(' '));
 });

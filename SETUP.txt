@@ -104,16 +104,36 @@ The "Ask" button in the sidebar opens a chat drawer for general questions.
 It is NOT connected to your dashboard and never sees your calendar, tasks
 or notes.
 
-To switch it on:
+It works with either provider. Google is free; OpenAI is not.
 
-1. Get an API key from platform.openai.com > API keys
-2. Add OPENAI_API_KEY to your .env (and to Railway later)
+
+OPTION A — Google Gemini (free, no card)
+
+1. Go to aistudio.google.com/apikey and create a key
+2. In .env set:
+       OPENAI_API_KEY=<your Gemini key>
+       OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+       OPENAI_MODEL=gemini-3.1-flash-lite
 3. Restart
 
-Leave OPENAI_API_KEY blank and the feature stays off; nothing else changes.
+Note: on Google's FREE tier, what you type may be used to improve their
+models. Nothing from your calendar, tasks or notes is ever sent — only
+the questions you type into the drawer.
 
-This one costs money per message, unlike everything else in this app.
-The relay is capped at 30 messages per 10 minutes as a safety net.
+
+OPTION B — OpenAI (paid)
+
+1. Go to platform.openai.com/api-keys and create a key
+2. Add billing credit — the API is prepaid, and a ChatGPT subscription
+   does NOT cover it. They are separate products.
+3. In .env set:
+       OPENAI_API_KEY=<your OpenAI key>
+       OPENAI_MODEL=gpt-4o-mini
+4. Restart
+
+
+Leave OPENAI_API_KEY blank and the feature stays off; nothing else changes.
+The relay is capped at 30 messages per 10 minutes either way.
 
 
 STEP 7 — put it online (only after step 6 works)

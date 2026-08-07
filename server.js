@@ -38,10 +38,15 @@ const notionConfig = {
 
 // The chat relay is a separate concern from the dashboard: it is never given
 // calendar, task or note data. See lib/chat.js.
+const chatBaseUrl = process.env.OPENAI_BASE_URL || DEFAULT_BASE_URL;
+
 const chatConfig = {
   apiKey: process.env.OPENAI_API_KEY,
-  baseUrl: process.env.OPENAI_BASE_URL || DEFAULT_BASE_URL,
-  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  baseUrl: chatBaseUrl,
+  // Pointing at Gemini and leaving the model unset would otherwise send an
+  // OpenAI model name to Google and fail with an unhelpful error.
+  model: process.env.OPENAI_MODEL ||
+    (/googleapis\.com/.test(chatBaseUrl) ? 'gemini-3.1-flash-lite' : 'gpt-4o-mini'),
   maxTokens: Number(process.env.OPENAI_MAX_TOKENS || 800),
   systemPrompt: process.env.OPENAI_SYSTEM_PROMPT ||
     'You are a concise assistant embedded in a personal dashboard. ' +

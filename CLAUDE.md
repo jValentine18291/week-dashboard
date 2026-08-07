@@ -222,9 +222,17 @@ at the user's request as a scratchpad for general questions.
   a metered relay on the owner's bill.
 - **Optional.** With no `OPENAI_API_KEY` the route returns 503 and the rest of
   the app is unaffected.
-- `OPENAI_BASE_URL` exists so the relay can point at any OpenAI-compatible
-  endpoint. It is also what makes the path testable against a mock upstream
-  without a real key or a real bill.
+- **Provider-agnostic.** `OPENAI_BASE_URL` points the relay at any
+  OpenAI-compatible endpoint; the env vars keep their `OPENAI_` names because
+  the *protocol* is OpenAI's, whoever serves it. Google's Gemini speaks it
+  natively at `https://generativelanguage.googleapis.com/v1beta/openai` —
+  same path, same Bearer auth, same streaming deltas — so switching providers
+  is three variables and no code. That is also what makes the path testable
+  against a mock upstream without a real key or a real bill.
+- Base URLs are normalised for a trailing slash: Google documents theirs with
+  one and OpenAI without, and `//chat/completions` is not the same path.
+- The default model is provider-aware. A Gemini base URL with no
+  `OPENAI_MODEL` would otherwise send an OpenAI model name to Google.
 
 The drawer is an **overlay**, not a fourth panel. Three panels already fill the
 viewport; a column would squeeze the calendar and break the one-screen rule.

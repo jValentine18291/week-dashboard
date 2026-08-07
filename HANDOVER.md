@@ -60,13 +60,32 @@ What has been verified:
   `/api/session` reports `open:false`, `/api/dashboard` returns 401 without a
   session, and a wrong password is rejected.
 
+## Deploying, and how to tell whether it worked
+
+`/healthz` reports the short commit SHA it was built from. That is the check:
+
+```bash
+curl https://week-dashboard-production.up.railway.app/healthz   # -> "ok 87b523d"
+```
+
+It exists because a stale container is otherwise indistinguishable from a
+working one. Several commits appeared to deploy and did not: the logs were
+clean, the service showed Online, and the site simply served old files.
+
+Two traps, both encountered:
+
+- **Railway's Redeploy re-runs the previous build.** It does not fetch newer
+  commits. To pick up new code the service must create a *new* deployment.
+- **The GitHub connection can silently fail.** Railway reads private repos
+  through its GitHub App; if that app has no access to this repository,
+  Settings → Source shows "GitHub Repo not found", no branch is watched, and
+  every push is ignored. Fixed by granting the Railway GitHub App access at
+  github.com/settings/installations. Auto-deploy on push works now.
+
+Adding or changing environment variables does not restart the service either.
+
 What has not been verified:
 
-- **Railway does not auto-deploy on push.** Four commits sat unpicked-up, and
-  adding environment variables does not restart the service on its own. After
-  any push or variable change, redeploy manually from the Deployments tab, then
-  re-check `/api/session` — a stale container is indistinguishable from a
-  working one until you look at that endpoint.
 - The rendered dashboard on the deployed instance. It runs the same commit whose
   output was checked line-by-line against the raw `.ics` locally, but that is an
   inference, not an observation: the data sits behind the password gate.

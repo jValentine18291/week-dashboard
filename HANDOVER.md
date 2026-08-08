@@ -95,6 +95,11 @@ What has not been verified:
   verified, but the callback itself could not be observed in the test browser,
   which does not composite frames. Worth one look in a real browser by dragging
   the window narrower and back.
+- **How the three pages look.** Their behaviour was driven end to end in a real
+  browser — nav state, card moves, month and week stepping, the news reader and
+  its grouping — and measured: no page scrolls, no clipped cells, six chips per
+  day on the Calendar page. But the test browser composites no frames, so
+  nothing was ever seen. The same gap applies to the second emblem port.
 
 ## How the shape of this was decided
 
@@ -169,7 +174,10 @@ What the brief asked for that was **not** built, and why:
   They appear in the boot screen as STANDBY modules so the composition is
   honest about what exists.
 - **Routing, page transitions, modals, settings, profile, database** — none of
-  these exist in a single-page read-only dashboard.
+  these existed in a single-page read-only dashboard. Partly superseded: the
+  user asked for a rail nav in August 2026 and there are now three pages. It is
+  still not routing in the framework sense — no URLs, no history, no library.
+  Settings, profile and a database remain absent and unwanted.
 - **React component architecture** (`HudPanel`, `SciFiSidebar`, …) — no build
   step. The same primitives exist as CSS classes.
 - **three.js cube** on the boot screen — replaced with the supplied emblem,
@@ -213,6 +221,48 @@ Three things were settled at the time:
 
 The layout was sized against 1920×1080, which is what the user runs. It degrades
 by fitting fewer event chips per day cell, not by scrolling.
+
+## The rail nav, and the constraint it retired
+
+Asked for in August 2026: a sidebar listing the app's sections, more
+comprehensive than the panels on the dashboard. The user named the list himself
+— Dashboard, Ask, Calendar, News — and was explicit that **Tasks must not be on
+it**, because This Week is meant to be a brief summary on the dashboard rather
+than a place you go.
+
+This directly retired a hard constraint. The rail had been kept to working
+controls only, and the mockup's ten-item nav was cut twice on the grounds that a
+link to a page which does not exist reads as a bug. That reasoning still stands;
+what changed is that the destinations were built. The rule in `CLAUDE.md` is now
+"entries that go somewhere real" rather than "no nav", which is the same rule
+stated honestly.
+
+Four things were settled while building it:
+
+- **Full-screen pages, not expanded panels.** The alternative was growing the
+  clicked panel inside the dashboard grid, which is less work but leaves each
+  view bounded by a layout designed for three panels at once. The point of the
+  section is the extra room: on its own page the month grid fits six events per
+  day against five on the dashboard.
+- **Ask stayed a drawer.** It is an action, not a destination, and the overlay
+  was a deliberate decision — a fourth column would squeeze the calendar and
+  break the one-screen rule. It sits second in the rail because the user listed
+  it second.
+- **The dashboard's calendar never moves off the real month.** Month stepping
+  belongs to the Calendar page alone. A dashboard showing March beside a "This
+  Week" progress bar measuring this week would be quietly wrong, and This Week
+  is the panel most likely to be believed without checking.
+- **News kept its interleaving.** `lib/news.js` merges the feeds newest-first so
+  a prolific source cannot crowd out a quieter one. Grouping by source was
+  wanted too, so it is a toggle beside `Latest` rather than a replacement — the
+  original ordering is still the default.
+
+Month navigation is the one part that needed the server: the payload is anchored
+to today, so `/api/calendar?anchor=YYYY-MM-DD` returns the same frame shape for
+any date. Anchors are validated as real dates within a decade — `2026-02-31` is
+rejected rather than rolled into March — and the month-grid cache is bounded,
+because a window left open stepping through months would otherwise grow it
+without limit.
 
 ## Design reference
 

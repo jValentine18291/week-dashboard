@@ -320,14 +320,15 @@ button:focus-visible,
 
 .card-calendar { grid-area: cal; }
 .card-week { grid-area: week; }
-/* Capped on purpose. This row is `auto`, so without a ceiling the feed grows
-   with its content and takes the height straight out of the calendar above it.
-   Measured at 1920x950: up to 176px keeps the month grid at 4 chips per day;
-   190px drops it to 3. The remaining stories scroll inside the panel. */
-.card-news {
-  grid-area: news;
-  max-height: 176px;
-}
+.card-news { grid-area: news; }
+
+/* Capped on purpose, and only inside the dashboard grid. This row is `auto`, so
+   without a ceiling the feed grows with its content and takes the height
+   straight out of the calendar above it. Measured at 1920x950: up to 176px
+   keeps the month grid at 4 chips per day; 190px drops it to 3. The remaining
+   stories scroll inside the panel. On the News page there is no calendar to
+   starve, so the cap does not apply — see .page below. */
+.layout > .card-news { max-height: 176px; }
 
 /* The border is a gradient, not a flat colour: two background layers, the panel
    fill clipped to padding-box and the rim clipped to border-box, with a
@@ -1101,6 +1102,108 @@ button:focus-visible,
 .nowline { animation: nowPulse 2.6s ease-in-out infinite; }
 
 .gate-card { animation: riseIn 420ms cubic-bezier(.2,.7,.3,1) backwards; }
+
+/* ---------- pages ---------- */
+
+/* A page occupies the same grid slot the dashboard does. The Calendar and News
+   cards are moved into it by setPage() rather than duplicated, so there is only
+   ever one of each in the document. */
+.page {
+  grid-area: main;
+  display: flex;
+  min-height: 0;
+  padding: 0 20px 16px;
+}
+
+.page > .card { flex: 1; min-width: 0; }
+
+/* Alone on a page a card is not competing for height with anything, so the
+   dashboard's ceiling comes off. The cap lives on `.layout > .card-news`, so
+   this only has to undo what a card sets on itself. */
+.card.is-full { max-height: none; }
+
+/* ---------- calendar navigation ---------- */
+
+.cal-nav { display: flex; align-items: center; gap: 2px; }
+
+.cal-step {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: rgba(5, 10, 20, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 3px 9px;
+  min-width: 26px;
+  cursor: pointer;
+  transition: color 140ms, border-color 140ms, background 140ms;
+}
+
+.cal-step.is-now { padding: 3px 11px; letter-spacing: .04em; }
+
+.cal-step:hover:not(:disabled) {
+  color: var(--blue);
+  border-color: rgba(34, 211, 238, 0.4);
+  background: rgba(34, 211, 238, 0.1);
+}
+
+/* Already on the real month: there is nothing to go back to, so Today is not
+   an action. */
+.cal-step:disabled { opacity: .35; cursor: default; }
+
+/* Only the grid dims while a month loads. The header keeps its contrast so the
+   range being fetched stays readable. */
+.card-calendar.is-busy .cal { opacity: .45; transition: opacity 160ms; }
+
+/* ---------- news reader ---------- */
+
+.news-list.is-full .news-item { padding: 12px 16px; gap: 14px; }
+.news-list.is-full .news-thumb { width: 108px; height: 68px; flex: 0 0 108px; }
+.news-list.is-full .news-title { font-size: 14.5px; }
+
+/* Clamped rather than truncated at the source: lib/news.js already caps the
+   summary at 220 characters, and two lines is what fits beside the thumbnail. */
+.news-summary {
+  margin-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-group { border-top: 1px solid var(--hair); }
+.news-group:first-child { border-top: none; }
+
+.news-grouphead {
+  font-family: 'Orbitron', ui-sans-serif, sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin: 0;
+  padding: 10px 16px 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--card);
+}
+
+.news-groupn {
+  font-family: 'Rajdhani', ui-sans-serif, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--ink-3);
+}
+
+/* The heading is already the separator; a rule under it would double up. */
+.news-group .news-item:first-of-type { border-top: none; }
 
 /* Single fallback for narrow windows (see CLAUDE.md — below 1180px is out of
    scope). The one-screen layout is abandoned here rather than half-applied:

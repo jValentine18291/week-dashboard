@@ -137,18 +137,93 @@ app.get('/api/session', (req, res) => {
 let cache = { at: 0, payload: null };
 const CACHE_MS = 60 * 1000;
 
+// The dashboard card shows the newest few; the News page shows the lot. One
+// fetch serves both, for the same reason the calendar fetches the whole month
+// grid — switching pages must not cost a round trip.
+const NEWS_LIMIT = 24;
+
+// Events keyed by the month grid they were fetched for, so navigating back to
+// a month already seen is free. Separate from the payload cache above: that one
+// is anchored to today and would be useless for any other month.
+const calCache = new Map();
+const CAL_CACHE_MAX = 24;
+
+function monthKeyOf(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Throws on failure rather than caching it, so a transient feed error does not
+// stick for a minute. Callers settle it.
+async function monthCalendar(anchor) {
+  const key = monthKeyOf(anchor);
+  const hit = calCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.data;
+
+  const data = await fetchCalendarEvents(
+    process.env.GOOGLE_CALENDAR_ICS_URL,
+    week.monthGridStart(anchor),
+    week.monthGridEnd(anchor)
+  );
+
+  calCache.set(key, { at: Date.now(), data });
+  // A window left open stepping through months would otherwise grow this
+  // without limit. Evict the least recently fetched.
+  if (calCache.size > CAL_CACHE_MAX) {
+    let oldestKey = null, oldestAt = Infinity;
+    for (const [k, v] of calCache) if (v.at < oldestAt) { oldestAt = v.at; oldestKey = k; }
+    calCache.delete(oldestKey);
+  }
+  return data;
+}
+
+// YYYY-MM-DD only, and a real date — "2026-02-31" is rejected rather than
+// rolling into March. Bounded to a decade either side: the range exists to keep
+// a malformed or hostile anchor from driving recurrence expansion somewhere
+// absurd, not because a further month would be wrong.
+const ANCHOR_LIMIT_MS = 10 * 365 * 24 * 60 * 60 * 1000;
+
+function parseAnchor(raw) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(raw || ''));
+  if (!m) return null;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  const date = new Date(y, mo - 1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) return null;
+  if (Math.abs(date.getTime() - Date.now()) > ANCHOR_LIMIT_MS) return null;
+  return date;
+}
+
+// The month grid and week that a given anchor date falls in. Shared by the
+// dashboard payload and /api/calendar so both describe a date the same way.
+function framesFor(anchor) {
+  const now = new Date();
+  return {
+    week: {
+      start: week.startOfWeek(anchor).toISOString(),
+      end: week.endOfWeek(anchor).toISOString(),
+      days: week.weekDays(anchor).map((d) => d.toISOString()),
+      // Always the real today, whatever month is being looked at — it is what
+      // the "today" highlight and the overdue check key on.
+      today: week.startOfDay(now).toISOString(),
+    },
+    month: {
+      start: week.startOfMonth(anchor).toISOString(),
+      end: week.endOfMonth(anchor).toISOString(),
+      gridStart: week.monthGridStart(anchor).toISOString(),
+      gridEnd: week.monthGridEnd(anchor).toISOString(),
+      days: week.monthDays(anchor).map((d) => d.toISOString()),
+    },
+  };
+}
+
 async function buildPayload() {
   const now = new Date();
-  const start = week.startOfWeek(now);
-  const end = week.endOfWeek(now);
+  const frames = framesFor(now);
 
   // The month grid is drawn in whole weeks, so it reaches wider than the month
   // itself and always contains the current week. Fetching that wider window
   // once lets the client switch between month and week views without another
   // round trip; the week view just filters the same array down.
-  const gridStart = week.monthGridStart(now);
-  const gridEnd = week.monthGridEnd(now);
-
+  //
   // Tasks stay on the week deliberately: the "This Week" panel and its progress
   // bar measure the current week, not the month the calendar happens to show.
   // Each source is settled independently: a broken calendar feed should not
@@ -157,9 +232,9 @@ async function buildPayload() {
   // request, so fetching it would be a Notion call nobody reads. lib/notion.js
   // still exports fetchNotes — see CLAUDE.md for how to bring the panel back.
   const [events, tasks, news] = await Promise.allSettled([
-    fetchCalendarEvents(process.env.GOOGLE_CALENDAR_ICS_URL, gridStart, gridEnd),
-    fetchTasks(notionConfig, week.toLocalISODate(end)),
-    fetchNews(newsFeeds, 8),
+    monthCalendar(now),
+    fetchTasks(notionConfig, week.toLocalISODate(week.endOfWeek(now))),
+    fetchNews(newsFeeds, NEWS_LIMIT),
   ]);
 
   const unwrap = (r, label) => {
@@ -171,19 +246,8 @@ async function buildPayload() {
   return {
     generatedAt: now.toISOString(),
     timezone: process.env.TZ,
-    week: {
-      start: start.toISOString(),
-      end: end.toISOString(),
-      days: week.weekDays(now).map((d) => d.toISOString()),
-      today: week.startOfDay(now).toISOString(),
-    },
-    month: {
-      start: week.startOfMonth(now).toISOString(),
-      end: week.endOfMonth(now).toISOString(),
-      gridStart: gridStart.toISOString(),
-      gridEnd: gridEnd.toISOString(),
-      days: week.monthDays(now).map((d) => d.toISOString()),
-    },
+    week: frames.week,
+    month: frames.month,
     calendar: unwrap(events, 'Calendar'),
     tasks: unwrap(tasks, 'Tasks'),
     news: unwrap(news, 'News'),
@@ -202,6 +266,26 @@ app.get('/api/dashboard', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Could not build the dashboard.' });
+  }
+});
+
+// The Calendar page only. The dashboard payload is anchored to today, so
+// stepping to another month needs its own window — but the month grid it
+// returns still covers whole Monday-Sunday weeks, so the week view of any date
+// inside it is served from the same array without a further request.
+//
+// Tasks and news are deliberately absent: this endpoint answers "what is on in
+// that month", and the "This Week" panel stays anchored to the real week.
+app.get('/api/calendar', requireAuth, async (req, res) => {
+  const anchor = parseAnchor(req.query.anchor);
+  if (!anchor) return res.status(400).json({ error: 'anchor must be a real YYYY-MM-DD date within ten years.' });
+
+  const frames = framesFor(anchor);
+  try {
+    res.json({ ...frames, calendar: { data: await monthCalendar(anchor), error: null } });
+  } catch (err) {
+    console.error('Calendar failed:', err.message);
+    res.json({ ...frames, calendar: { data: [], error: err.message || 'Could not load' } });
   }
 });
 

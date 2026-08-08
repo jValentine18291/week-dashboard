@@ -4,6 +4,12 @@ A desktop dashboard showing your week at a glance: a Google Calendar month grid
 with a week view a click away, a This Week checklist merging tasks and events
 with a progress bar, and a news feed. Click anything to expand it.
 
+The sidebar holds four entries. **Dashboard** is that overview. **Calendar** and
+**News** open the same two panels full-screen, with more room and more in them.
+**Ask** opens the assistant drawer over whatever is showing. Tasks is
+deliberately not a section: This Week is a summary of the week, and it belongs
+beside the calendar rather than on a page of its own.
+
 Read-only by design — nothing here writes back to Notion or Google.
 
 Working on this with Claude Code? `CLAUDE.md` loads automatically and holds the
@@ -100,6 +106,15 @@ marked secure.
   Your choice is remembered in the browser. The month grid runs Monday-first
   and greys the leading and trailing days of neighbouring months, which still
   show their events.
+- **The Calendar section adds `‹ Today ›`**, which steps a month at a time in
+  the month view and a week at a time in the week view. The dashboard's own
+  calendar card never moves off the real month, so it cannot disagree with This
+  Week beside it — leaving the section resets it. Given the whole screen the
+  grid also fits more per day: six events per cell instead of five at 1920×1080.
+- **The News section shows every story fetched**, roughly two dozen, with
+  summaries and larger thumbnails; the dashboard card shows the newest eight.
+  Both come from one fetch, so switching costs nothing. `Latest` interleaves the
+  feeds newest-first, `By source` groups them.
 - **A day with more events than fit** shows the first few and then `+N more`.
   In a short window, where only one line fits, it shows a plain count instead.
   Click any event, in either view, for its details.

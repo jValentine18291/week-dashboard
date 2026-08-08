@@ -10,6 +10,26 @@ let FILTER = 'all';
 // screen comes back the way it was left.
 let VIEW = localStorage.getItem('cal-view') === 'week' ? 'week' : 'month';
 
+// Which rail section is showing, remembered for the same reason as VIEW. Ask is
+// not a page — it is a drawer, and opens over whichever page is up.
+const PAGES = ['dashboard', 'calendar', 'news'];
+let PAGE = PAGES.indexOf(localStorage.getItem('page')) >= 0
+  ? localStorage.getItem('page') : 'dashboard';
+
+// The month the Calendar page is looking at, as YYYY-MM-DD. null means the one
+// the dashboard payload was already built for, which costs no request. Only the
+// Calendar page moves it: the dashboard's calendar card must always agree with
+// the "This Week" panel beside it.
+let ANCHOR = null;
+let ANCHORED = null;
+const ANCHOR_CACHE = new Map();
+let CAL_BUSY = false;
+
+// lib/news.js interleaves the feeds by recency so a prolific source cannot
+// crowd out a quieter one. Grouping is offered alongside that, not instead.
+let NEWS_SORT = localStorage.getItem('news-sort') === 'source' ? 'source' : 'latest';
+const NEWS_ON_DASHBOARD = 8;
+
 const HOUR_H = 52;          // must match --hour-h in styles.css
 const DEFAULT_START = 8;    // grid opens at 8am unless events start earlier
 const DEFAULT_END = 20;
@@ -149,29 +169,38 @@ function gridBounds(timed) {
   return { startHour: Math.max(0, lo), endHour: Math.min(24, Math.max(hi, lo + 4)) };
 }
 
-// The payload always carries the whole month grid, so each view narrows the
-// same array to the days it draws rather than asking the server again. Matched
-// on every day an event covers, so one that started before this window but runs
-// into it is not dropped.
-function eventsOn(days) {
+// A frame carries the whole month grid, so each view narrows the same array to
+// the days it draws rather than asking the server again. Matched on every day
+// an event covers, so one that started before this window but runs into it is
+// not dropped.
+function eventsOn(days, events) {
   const keys = new Set(days.map(dayKey));
-  return (PAYLOAD.calendar.data || []).filter((e) =>
-    coveredDayKeys(e).some((k) => keys.has(k)));
+  return (events || []).filter((e) => coveredDayKeys(e).some((k) => keys.has(k)));
+}
+
+// The frame the calendar is drawing: the anchored month on the Calendar page,
+// otherwise the dashboard payload's own. /api/calendar returns the same shape
+// as the payload's week/month/calendar, so nothing below needs to know which
+// one it was handed.
+function calSource() {
+  return PAGE === 'calendar' && ANCHORED ? ANCHORED : PAYLOAD;
 }
 
 function renderCalendar() {
   const month = VIEW === 'month';
   $('cal-month').hidden = !month;
   $('cal-week').hidden = month;
-  // Covers both the card-header toggle and the rail, so the two never disagree.
+  // Covers both the card-header toggle and anything else carrying data-view.
   document.querySelectorAll('[data-view]').forEach((b) =>
     b.classList.toggle('is-active', b.dataset.view === VIEW));
+  // Nothing to go back to when the anchor is already the real month.
+  $('cal-today').disabled = !ANCHOR;
 
   if (month) renderMonth();
   else renderWeekGrid();
 
   wireEventDetails();
-  showError('calendar-error', PAYLOAD.calendar.error);
+  showError('calendar-error', calSource().calendar.error);
 }
 
 // ---------- month view ----------
@@ -185,20 +214,21 @@ let LAST_CAPACITY = null;
 // large window and still refuses to overflow a small one.
 function chipCapacity() {
   const grid = $('mon-grid');
-  const rows = (PAYLOAD.month.days.length / 7) || 6;
+  const rows = (calSource().month.days.length / 7) || 6;
   const cellH = (grid.clientHeight || 540) / rows;
   return Math.max(1, Math.floor((cellH - NUM_RESERVE) / CHIP_H));
 }
 
 function renderMonth() {
-  const days = PAYLOAD.month.days;
-  const events = eventsOn(days);
-  const todayKey = dayKey(PAYLOAD.week.today);
-  const thisMonth = monthKey(PAYLOAD.month.start);
+  const src = calSource();
+  const days = src.month.days;
+  const events = eventsOn(days, src.calendar.data);
+  const todayKey = dayKey(src.week.today);
+  const thisMonth = monthKey(src.month.start);
   const rows = days.length / 7;
 
   $('cal-range').textContent =
-    fmt(new Date(PAYLOAD.month.start), { month: 'long', year: 'numeric' });
+    fmt(new Date(src.month.start), { month: 'long', year: 'numeric' });
 
   $('mon-daybar').innerHTML = days
     .slice(0, 7)
@@ -265,14 +295,15 @@ function renderMonth() {
 // ---------- week view ----------
 
 function renderWeekGrid() {
-  const days = PAYLOAD.week.days;
-  const events = eventsOn(days);
-  const todayKey = dayKey(PAYLOAD.week.today);
+  const src = calSource();
+  const days = src.week.days;
+  const events = eventsOn(days, src.calendar.data);
+  const todayKey = dayKey(src.week.today);
 
   $('tz-label').textContent = fmt(new Date(), { timeZoneName: 'shortOffset' }).split(', ').pop() || '';
   $('cal-range').textContent =
-    `${fmt(new Date(PAYLOAD.week.start), { day: 'numeric', month: 'short' })} – ` +
-    `${fmt(new Date(PAYLOAD.week.end), { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    `${fmt(new Date(src.week.start), { day: 'numeric', month: 'short' })} – ` +
+    `${fmt(new Date(src.week.end), { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
   // Day headings
   $('cal-days').innerHTML = days
@@ -402,7 +433,7 @@ function renderWeekGrid() {
 function wireEventDetails() {
   document.querySelectorAll('.ev, .ev-allday, .mon-chip').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const ev = (PAYLOAD.calendar.data || []).find((e) => e.id === btn.dataset.id);
+      const ev = (calSource().calendar.data || []).find((e) => e.id === btn.dataset.id);
       if (!ev) return;
       // A multi-day event says which days, not just "All day".
       const span = coveredDayKeys(ev).length > 1 && ev.end
@@ -434,9 +465,10 @@ function weekItems() {
     url: t.url,
   }));
 
-  // Narrowed to the current week even when the calendar is showing the month:
-  // this panel and its progress bar are deliberately weekly.
-  const events = eventsOn(PAYLOAD.week.days).map((e) => ({
+  // Always the payload's own week and events, never the anchored frame: this
+  // panel and its progress bar are deliberately weekly, and stepping the
+  // Calendar page to March must not change what "This Week" means.
+  const events = eventsOn(PAYLOAD.week.days, PAYLOAD.calendar.data).map((e) => ({
     kind: 'event',
     id: e.id,
     title: e.title,
@@ -550,7 +582,7 @@ function wireWeekDetails(items) {
   });
 }
 
-// ---------- notes ----------
+// ---------- news ----------
 
 // Relative time, because "2h ago" is what you actually want from a feed.
 function agoOf(iso) {
@@ -563,10 +595,66 @@ function agoOf(iso) {
   return `${Math.round(hrs / 24)}d ago`;
 }
 
+// `full` adds the summary. Everything else is shared, so a story reads the same
+// either side of the page switch — only the amount of it changes.
+function newsItem(n, full) {
+  // Many feeds carry no image (see HANDOVER phase 2 research), so the
+  // fallback is a source-tinted initial rather than a broken frame.
+  const c = colourFor(n.source || '', PALETTE);
+  const thumb = n.image
+    ? `<span class="news-thumb" style="background-image:url('${escapeHtml(n.image)}')"></span>`
+    : `<span class="news-thumb is-blank" style="color:${c.fg};background:${c.bg}">${escapeHtml((n.source || '?').slice(0, 2).toUpperCase())}</span>`;
+
+  return `<a class="news-item" href="${escapeHtml(n.link || '#')}" target="_blank" rel="noopener">
+    ${thumb}
+    <span class="news-body">
+      <span class="news-title">${escapeHtml(n.title)}</span>
+      ${full && n.summary ? `<span class="news-summary">${escapeHtml(n.summary)}</span>` : ''}
+      <span class="news-meta">
+        <span class="news-source" style="color:${c.fg}">${escapeHtml(n.source || '')}</span>
+        <span class="news-dot"></span>
+        <span class="news-ago">${escapeHtml(agoOf(n.published))}</span>
+      </span>
+    </span>
+  </a>`;
+}
+
+// Insertion order of a Map is stable, so sources appear in the order their
+// first story does — which keeps the freshest feed at the top.
+function groupedNews(items) {
+  const groups = new Map();
+  for (const n of items) {
+    const key = n.source || 'Other';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(n);
+  }
+  return [...groups]
+    .map(([source, list]) => {
+      const c = colourFor(source, PALETTE);
+      return `<div class="news-group">
+        <h3 class="news-grouphead" style="color:${c.fg}">
+          ${escapeHtml(source)}<span class="news-groupn">${list.length}</span>
+        </h3>
+        ${list.map((n) => newsItem(n, true)).join('')}
+      </div>`;
+    })
+    .join('');
+}
+
 function renderNews() {
-  const items = PAYLOAD.news.data || [];
+  const all = PAYLOAD.news.data || [];
+  const full = PAGE === 'news';
+  // The server fetches the lot once; the dashboard card shows the newest few so
+  // it keeps to the height the calendar needs it to keep to.
+  const items = full ? all : all.slice(0, NEWS_ON_DASHBOARD);
   const el = $('news');
-  $('news-meta').textContent = items.length ? `${items.length} latest` : '';
+
+  el.classList.toggle('is-full', full);
+  $('news-meta').textContent = items.length
+    ? (full ? `${items.length} stories` : `${items.length} latest`)
+    : '';
+  document.querySelectorAll('[data-sort]').forEach((b) =>
+    b.classList.toggle('is-active', b.dataset.sort === NEWS_SORT));
 
   if (!items.length) {
     el.innerHTML = '<p class="empty">No stories right now.</p>';
@@ -574,30 +662,132 @@ function renderNews() {
     return;
   }
 
-  el.innerHTML = items
-    .map((n) => {
-      // Many feeds carry no image (see HANDOVER phase 2 research), so the
-      // fallback is a source-tinted initial rather than a broken frame.
-      const c = colourFor(n.source || '', PALETTE);
-      const thumb = n.image
-        ? `<span class="news-thumb" style="background-image:url('${escapeHtml(n.image)}')"></span>`
-        : `<span class="news-thumb is-blank" style="color:${c.fg};background:${c.bg}">${escapeHtml((n.source || '?').slice(0, 2).toUpperCase())}</span>`;
-
-      return `<a class="news-item" href="${escapeHtml(n.link || '#')}" target="_blank" rel="noopener">
-        ${thumb}
-        <span class="news-body">
-          <span class="news-title">${escapeHtml(n.title)}</span>
-          <span class="news-meta">
-            <span class="news-source" style="color:${c.fg}">${escapeHtml(n.source || '')}</span>
-            <span class="news-dot"></span>
-            <span class="news-ago">${escapeHtml(agoOf(n.published))}</span>
-          </span>
-        </span>
-      </a>`;
-    })
-    .join('');
+  el.innerHTML = full && NEWS_SORT === 'source'
+    ? groupedNews(items)
+    : items.map((n) => newsItem(n, full)).join('');
 
   showError('news-error', PAYLOAD.news.error);
+}
+
+// ---------- pages ----------
+
+// There is one Calendar card and one News card in the document; a page switch
+// moves the node rather than rendering a second copy. That keeps every id
+// unique — the alternative was duplicate markup and a renderer that had to be
+// told which copy it was drawing into.
+//
+// Only move when the parent actually changes: re-inserting a node restarts its
+// entrance animation, and the five-minute auto-refresh calls through here.
+function place(node, host, before) {
+  if (node.parentNode === host) return;
+  if (before && before.parentNode === host) host.insertBefore(node, before);
+  else host.appendChild(node);
+}
+
+function setPage(next) {
+  PAGE = PAGES.indexOf(next) >= 0 ? next : 'dashboard';
+  localStorage.setItem('page', PAGE);
+
+  // Leaving the Calendar page drops the anchor. The dashboard card has to show
+  // the real month, and coming back later to "some month in 2027" would read as
+  // a bug rather than as a memory.
+  if (PAGE !== 'calendar' && ANCHOR) { ANCHOR = null; ANCHORED = null; }
+
+  const dash = $('page-dashboard');
+  const cal = document.querySelector('.card-calendar');
+  const news = document.querySelector('.card-news');
+  const weekCard = document.querySelector('.card-week');
+
+  dash.hidden = PAGE !== 'dashboard';
+  $('page-calendar').hidden = PAGE !== 'calendar';
+  $('page-news').hidden = PAGE !== 'news';
+
+  // Unhide before moving: the month grid measures its own box, so it has to be
+  // in a laid-out container by the time renderCalendar runs below.
+  place(cal, PAGE === 'calendar' ? $('page-calendar') : dash, weekCard);
+  place(news, PAGE === 'news' ? $('page-news') : dash, null);
+
+  cal.classList.toggle('is-full', PAGE === 'calendar');
+  news.classList.toggle('is-full', PAGE === 'news');
+  $('cal-nav').hidden = PAGE !== 'calendar';
+  $('news-sort').hidden = PAGE !== 'news';
+
+  document.querySelectorAll('[data-page]').forEach((b) =>
+    b.classList.toggle('is-active', b.dataset.page === PAGE));
+
+  if (!PAYLOAD) return;
+  renderNews();
+  renderCalendar();   // last, for the reason given in load()
+}
+
+// Year and month arithmetic on the formatted parts rather than on a Date: the
+// browser's zone is not necessarily TZ, so "add one month to this instant" can
+// land in the wrong one. Days are stepped in milliseconds and then read back in
+// TZ, which survives an offset change mid-step.
+function tzParts(d) {
+  const p = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(d);
+  const get = (t) => p.find((x) => x.type === t).value;
+  return { y: Number(get('year')), m: Number(get('month')), d: Number(get('day')) };
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+
+function stepAnchor(delta) {
+  const src = calSource();
+  if (VIEW === 'month') {
+    const p = tzParts(new Date(src.month.start));
+    let y = p.y, m = p.m + delta;
+    while (m < 1) { m += 12; y -= 1; }
+    while (m > 12) { m -= 12; y += 1; }
+    return `${y}-${pad2(m)}-01`;
+  }
+  const p = tzParts(new Date(new Date(src.week.start).getTime() + delta * 7 * DAY_MS));
+  return `${p.y}-${pad2(p.m)}-${pad2(p.d)}`;
+}
+
+// A month grid covers whole Monday-Sunday weeks, so the week containing the
+// anchor is always inside the frame already fetched for it — stepping weeks
+// only costs a request when it crosses into a month not yet seen.
+async function goAnchor(anchor) {
+  if (CAL_BUSY) return;
+
+  if (!anchor) {
+    ANCHOR = null;
+    ANCHORED = null;
+    renderCalendar();
+    return;
+  }
+
+  const cached = ANCHOR_CACHE.get(anchor);
+  if (cached) {
+    ANCHOR = anchor;
+    ANCHORED = cached;
+    renderCalendar();
+    return;
+  }
+
+  const card = document.querySelector('.card-calendar');
+  CAL_BUSY = true;
+  card.classList.add('is-busy');
+  try {
+    const res = await fetch(`/api/calendar?anchor=${encodeURIComponent(anchor)}`);
+    if (res.status === 401) return showGate();
+    if (!res.ok) throw new Error(String(res.status));
+    const frame = await res.json();
+    ANCHOR_CACHE.set(anchor, frame);
+    ANCHOR = anchor;
+    ANCHORED = frame;
+    renderCalendar();
+  } catch (err) {
+    // Left on screen deliberately: renderCalendar is what clears this, and it
+    // is not called on the path that failed.
+    showError('calendar-error', 'Could not load that month.');
+  } finally {
+    CAL_BUSY = false;
+    card.classList.remove('is-busy');
+  }
 }
 
 // ---------- shell ----------
@@ -674,11 +864,12 @@ async function load(force = false) {
 
   renderHeader();
   renderThisWeek();
-  renderNews();
-  // Last on purpose. The month grid measures its own box to decide how many
-  // chips fit in a day cell, so the panels that share the layout have to claim
-  // their height first or it measures a box it is about to lose.
-  renderCalendar();
+  // Places the cards for whichever page is showing, then renders News and —
+  // last on purpose — the calendar. The month grid measures its own box to
+  // decide how many chips fit in a day cell, so the panels that share the
+  // layout have to claim their height first or it measures a box it is about
+  // to lose.
+  setPage(PAGE);
 
   BOOTED = true;
   if (boot) await boot.finish();
@@ -709,13 +900,32 @@ $('signin').addEventListener('click', signIn);
 $('password').addEventListener('keydown', (e) => { if (e.key === 'Enter') signIn(); });
 $('refresh').addEventListener('click', () => load(true));
 
-// Delegated, so the card-header toggle and the rail share one path.
+// Delegated, so anything carrying data-view shares one path.
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-view]');
   if (!btn || btn.dataset.view === VIEW) return;
   VIEW = btn.dataset.view;
   localStorage.setItem('cal-view', VIEW);
   renderCalendar();
+});
+
+// Rail sections. Ask is not here — it is a drawer, wired in chat.js.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-page]');
+  if (!btn || btn.dataset.page === PAGE) return;
+  setPage(btn.dataset.page);
+});
+
+$('cal-prev').addEventListener('click', () => goAnchor(stepAnchor(-1)));
+$('cal-next').addEventListener('click', () => goAnchor(stepAnchor(1)));
+$('cal-today').addEventListener('click', () => goAnchor(null));
+
+$('news-sort').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-sort]');
+  if (!btn || btn.dataset.sort === NEWS_SORT) return;
+  NEWS_SORT = btn.dataset.sort;
+  localStorage.setItem('news-sort', NEWS_SORT);
+  renderNews();
 });
 
 
@@ -739,6 +949,10 @@ setInterval(() => { if (PAYLOAD) tickClock(); }, 1000);
 // The first paint does not rely on this — see the render order in load().
 new ResizeObserver(() => {
   if (!PAYLOAD || VIEW !== 'month') return;
+  // Zero height means the card is sitting on a hidden page. chipCapacity would
+  // fall back to its default and re-render against a box that is not on screen;
+  // setPage re-renders on the way back anyway.
+  if (!$('mon-grid').clientHeight) return;
   if (chipCapacity() !== LAST_CAPACITY) renderCalendar();
 }).observe($('mon-grid'));
 

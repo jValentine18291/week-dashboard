@@ -27,17 +27,25 @@ User-facing setup steps: see `SETUP.txt`.
   introduce React, Vite, Tailwind, TypeScript or a bundler.
 - **No search bar, notification bell or avatar.** These were in the reference
   mockups and were cut on purpose — single-user app, nothing to notify.
-- **The rail contains only controls that work.** It holds the Month and Week
-  switches and Ask, and nothing else. Refresh was removed at the user's
-  request; the topbar button and the five-minute auto-reload both remain, so
-  nothing was lost. The reference mockup showed ten nav
+- **The rail contains only entries that go somewhere real.** It holds
+  Dashboard, Ask, Calendar and News. Three are pages; Ask is the chat drawer and
+  opens over whichever page is up. This rule has not changed — what changed is
+  that the destinations now exist. The user asked for the nav in August 2026 and
+  the pages were built to match; adding an entry still means building the thing
+  it points at, because a dead link reads as a bug. The reference mockup's ten
   items — Dashboard, Calendar, Tasks, Notes, Markets, News, Goals, Files,
-  Settings, Log out — for pages that do not exist in a single-page app, two of
-  which (Goals, Files) are not features in any phase. Do not add nav entries
-  for destinations that are not real; a dead link reads as a bug.
-  `POST /api/logout` still exists and works; the user asked for the button to
-  be removed because he will never use it. Keep the endpoint, leave it
-  unsurfaced.
+  Settings, Log out — remain wrong for that reason: two of them (Goals, Files)
+  are not features in any phase.
+
+  **Tasks is deliberately not a section.** The user was explicit: This Week is
+  a brief summary that belongs on the dashboard. Do not promote it to a page.
+
+  The Month and Week switches moved out of the rail and into the calendar card
+  header, where a duplicate pair already lived. Refresh was removed earlier at
+  the user's request; the topbar button and the five-minute auto-reload both
+  remain, so nothing was lost. `POST /api/logout` still exists and works; the
+  user asked for the button to be removed because he will never use it. Keep the
+  endpoint, leave it unsurfaced.
 - **Auth fails closed.** With no `DASHBOARD_PASSWORD` set, `/api/dashboard` is
   served only to a loopback caller. Anything else gets a 503. Do not "simplify"
   this back to `if (!DASHBOARD_PASSWORD) return next()` — that shipped, and the
@@ -146,10 +154,26 @@ These are all load-bearing and all have cost real debugging time. Do not
    views; the week view narrows the same array with `eventsOn()`. Toggling
    views must not hit the server.
 
+   The Calendar page stretches this rather than breaking it. `/api/calendar`
+   returns the same frame shape for any anchor date, and `monthCalendar()`
+   caches by month grid, so stepping back to a month already seen is free. The
+   load-bearing property is that **a month grid always contains the whole week
+   containing its anchor** — that is what lets the page step weeks without
+   refetching until it crosses into a new month. It holds because a grid is
+   built from `startOfWeek(startOfMonth)` to `endOfWeek(endOfMonth)`; asserted
+   for every day of 2025–2028 rather than assumed.
+
+9. **Only the Calendar page may move off the real month.** `calSource()` returns
+   the anchored frame there and the dashboard payload everywhere else, and
+   `weekItems()` ignores it entirely — This Week reads `PAYLOAD.week` and
+   `PAYLOAD.calendar.data` directly. Wiring it to `calSource()` would make the
+   progress bar measure March because the calendar happened to be showing it.
+   Leaving the page clears the anchor for the same reason.
+
 ## Files
 
 ```
-server.js            express, auth, /api/dashboard
+server.js            express, auth, /api/dashboard, /api/calendar
 lib/                 calendar.js, notion.js, week.js
 public/index.html    single page: boot host, gate, rail, topbar, three panels
 public/styles.css    dashboard
@@ -159,6 +183,31 @@ public/boot.js       boot sequence (vanilla port of the handoff)
 public/emblem.js     animated hex-cube emblem (vanilla port of the handoff)
 verify-calendar.js   DTSTART-anchoring fixture
 ```
+
+## Pages
+
+Three pages, one rail, no router. `setPage()` in `public/app.js` shows one of
+`#page-dashboard` / `#page-calendar` / `#page-news` and **moves** the Calendar
+and News cards between them.
+
+- **Moving, not duplicating.** There is exactly one of each card in the
+  document, so every id stays unique and every handler stays wired. Rendering a
+  second copy would mean duplicate markup and a renderer that had to be told
+  which copy it was drawing into.
+- **`place()` only moves when the parent actually changes.** Re-inserting a node
+  restarts its entrance animation, and `load()` calls `setPage()` on every
+  five-minute refresh. Without the guard the screen would flash while the user
+  was reading it — the same failure the Motion section describes.
+- **`setPage()` renders the calendar last**, for the reason `load()` does: the
+  month grid measures its own box, so it must be in a laid-out, visible
+  container by then. That is also why the pages are unhidden before the cards
+  are moved into them.
+- **The `ResizeObserver` bails on a zero-height grid.** A card sitting on a
+  hidden page measures nothing, `chipCapacity()` falls back to its default, and
+  it would re-render against a box that is not on screen.
+- The dashboard's `.card-news` cap lives on `.layout > .card-news`, so it
+  applies in the grid and not on the News page. `.card.is-full` undoes anything
+  a card caps on itself.
 
 ## HUD geometry
 
@@ -396,6 +445,17 @@ console.log('clipped cells:', [...document.querySelectorAll('.mon-events')]
 Check both at 1920×1080 and at a smaller window — a month cell that is too
 short must fall back to a `"N events"` count, never to a bare `"+N more"` with
 nothing named.
+
+Run that on **all three pages**, not just the dashboard: the Calendar and News
+pages give a card the whole viewport, which is exactly where an uncapped panel
+starts pushing the page taller. Last measured at 1920×1080 — no page scrolls,
+no clipped cells, and the calendar grid fits six events per day on its own page
+against five on the dashboard.
+
+The frame invariants behind month and week stepping are pure date maths, so
+assert them rather than clicking through: for every day of several years,
+`startOfWeek(d)` and `endOfWeek(d)` must fall inside `monthGridStart(d)` and
+`monthGridEnd(d)`, and `monthDays(d)` must be whole weeks starting on a Monday.
 
 ## Phase 2, when asked
 

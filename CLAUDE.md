@@ -10,6 +10,8 @@ weekly regardless of which calendar view is showing.
 
 Longer background, rejected alternatives and phase 2 research: see `HANDOVER.md`.
 User-facing setup steps: see `SETUP.txt`.
+Picking the project up on a new development machine: see `WORKSTATION.md` —
+tooling, pulling config from Railway rather than by hand, and current state.
 
 ## Hard constraints — confirm before changing any of these
 

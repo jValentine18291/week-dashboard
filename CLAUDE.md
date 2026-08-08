@@ -170,6 +170,15 @@ These are all load-bearing and all have cost real debugging time. Do not
    progress bar measure March because the calendar happened to be showing it.
    Leaving the page clears the anchor for the same reason.
 
+10. **A grid area that does not exist fails silently.** The narrow fallback's
+    `grid-template-areas` still read `"cal" "week" "notes"` for months after the
+    Notes panel became News. `.card-news` matched no area, so it was
+    auto-placed into an *implicit third column* and the "single column" stack
+    was quietly three columns wide — the calendar got 404px of an available
+    989px below 1180px. Nothing errored and nothing logged. Renaming a panel
+    means grepping the stylesheet for its area name, and `grid-template-columns`
+    in the inspector is what makes this visible.
+
 ## Files
 
 ```
@@ -223,6 +232,20 @@ brackets. Both pseudo-elements are taken — anything else needs real markup.
 
 Type: **Orbitron** for headings and system labels only, **Rajdhani** for body
 and data. Do not set Orbitron on small text; it is unreadable below ~12px.
+
+The calendar card is the one panel whose head is a **grid**, not a flex row:
+`minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr)`, so the month sits centred on
+the card rather than being pushed sideways by whatever controls sit beside it —
+the stepper exists only on the Calendar page, so a flex row would move the month
+between the two. The month is Orbitron at 15px (13px in the narrow fallback),
+which is the intended exception to the rule above: it is a heading, and both
+sizes clear the ~12px floor. It carries a two-layer glow — a tight filament and
+a wide dim bloom — because one shadow alone reads as a blur rather than as neon.
+
+That heading is bigger than what it replaced, which is exactly what landmine 6
+warns about. Measured after the change: chips per day unchanged at five on the
+dashboard and six on the Calendar page, no clipped cells, no page scroll,
+contrast 16.3:1. Re-measure if it grows again.
 
 ## Boot sequence
 

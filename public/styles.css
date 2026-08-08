@@ -1122,6 +1122,60 @@ button:focus-visible,
    this only has to undo what a card sets on itself. */
 .card.is-full { max-height: none; }
 
+/* ---------- calendar month heading ---------- */
+
+/* The month is what you actually read on this card, so it takes the middle and
+   the glow rather than the panel title. Three columns with 1fr outriggers keep
+   it centred on the card itself whatever the controls beside it weigh — the
+   stepper only exists on the Calendar page, so a flex row would shift the month
+   sideways between the two. Scoped to .card-calendar: the other cards keep the
+   plain left/right head. */
+.card-calendar .card-head {
+  display: grid;
+  /* The centre track is minmax(0, auto), not auto: a bare auto track refuses to
+     shrink, so on a narrow card it keeps its width and pushes straight through
+     the controls instead of giving way. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.card-calendar .card-head-right { justify-self: end; }
+
+/* Narrow the card far enough and a centred month would run into the panel
+   title — measured at 1180px, which is the fallback zone, but it costs nothing
+   to let the title yield instead of overlap. Flex items do not shrink below
+   their content without min-width: 0, which is why the column alone is not
+   enough. The title gives way rather than the month: the month is the thing
+   being read here, and the icon still says which card this is. */
+.card-calendar .card-head-left { min-width: 0; }
+
+.card-calendar .card-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Orbitron is allowed here because this is a heading, not data — it is set at
+   15px, well clear of the ~12px floor below which the face stops being
+   readable. The glow is two shadows: a tight one for the filament and a wide
+   dim one for the bloom. One shadow alone reads as a blur, not as neon. */
+.card-calendar #cal-range {
+  justify-self: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'Orbitron', ui-sans-serif, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #d6f2ff;
+  text-shadow:
+    0 0 8px rgba(76, 195, 255, .65),
+    0 0 24px rgba(76, 195, 255, .32);
+}
+
 /* ---------- calendar navigation ---------- */
 
 .cal-nav { display: flex; align-items: center; gap: 2px; }
@@ -1213,11 +1267,20 @@ button:focus-visible,
 
   #app { height: auto; }
 
+  /* "news", not "notes". The Notes panel was replaced by News and this template
+     kept the old name, so .card-news matched no area, was auto-placed into an
+     implicit third column, and the stack was quietly three columns wide — the
+     calendar got 404px of an available 989px. A grid area that does not exist
+     fails silently, which is why this survived the swap. */
   .layout {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
-    grid-template-areas: "cal" "week" "notes";
+    grid-template-areas: "cal" "week" "news";
   }
+
+  /* Enough to keep the longest label — a week range — off the controls at this
+     width, so the shrink rules above stay a backstop rather than the norm. */
+  .card-calendar #cal-range { font-size: 13px; letter-spacing: .05em; }
 
   .cal-month { min-height: 460px; }
   .week-list { max-height: 420px; }

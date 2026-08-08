@@ -115,6 +115,10 @@
           </span>
           <h2 id="h-cal" class="card-title">Google Calendar</h2>
         </div>
+        <!-- Out of card-head-right on purpose: it is a direct child of the head
+             so the grid can centre it against the whole card, not against
+             whatever the controls happen to weigh. -->
+        <span id="cal-range" class="card-meta"></span>
         <div class="card-head-right">
           <!-- Calendar page only. The dashboard card stays pinned to the real
                month so it cannot disagree with "This Week" beside it. -->
@@ -123,7 +127,6 @@
             <button class="cal-step is-now" id="cal-today" type="button">Today</button>
             <button class="cal-step" id="cal-next" type="button" aria-label="Next">&rsaquo;</button>
           </div>
-          <span id="cal-range" class="card-meta"></span>
           <div class="viewtoggle" id="viewtoggle" role="group" aria-label="Calendar view">
             <button class="vt" data-view="month" type="button">Month</button>
             <button class="vt" data-view="week" type="button">Week</button>

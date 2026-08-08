@@ -21,7 +21,10 @@
  */
 window.Boot = (function () {
   var MIN_VISIBLE_MS = 1800;   // handoff + brief both sanction a short floor
-  var READY_HOLD_MS = 900;
+  // Was 900. That was 900ms in which nothing moved but the words, and it sat
+  // between a finished boot and a dashboard nobody could see yet. Shortening
+  // the hold is not the same as shortening MIN_VISIBLE_MS, which stays put.
+  var READY_HOLD_MS = 400;
   var SEGMENTS = 26;
   var BLOCKS = 6;
 
@@ -73,7 +76,11 @@ window.Boot = (function () {
     return s;
   }
 
-  function start() {
+  // opts.onLeave fires on the frame the screen starts to leave, so the caller
+  // can begin the dashboard's own entrance against the same moment. Without it
+  // the two motions can only be queued, and the handoff reads as a cut.
+  function start(opts) {
+    opts = opts || {};
     var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var root = h('div', null); root.id = 'boot';
     var stage = h('div', 'bt-stage');
@@ -317,6 +324,9 @@ window.Boot = (function () {
       clearInterval(timer);
       window.removeEventListener('resize', fit);
       if (emblem) emblem.destroy();
+      // Before the class, not after: the dashboard's entrance and this fade have
+      // to start on the same frame or they queue instead of overlapping.
+      if (opts.onLeave) opts.onLeave();
       root.classList.add('is-leaving');
       setTimeout(function () { if (root.parentNode) root.parentNode.removeChild(root); }, 400);
     }

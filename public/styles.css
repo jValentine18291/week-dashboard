@@ -1088,14 +1088,47 @@ button:focus-visible,
 
 /* Reveal order follows the brief: rail, rail contents, header, then panels.
    Small movement — panels should read as activating, not flying in. */
-.rail   { animation: fadeIn 320ms ease backwards; }
+/* Charge enters at the rail and travels outward, each panel's rim igniting as
+   it arrives — so the dashboard reads as being switched on rather than
+   uncovered. drop-shadow, not box-shadow: the panels are clipped to their
+   chamfer and a box-shadow is discarded along with everything else outside the
+   silhouette, while a filter is applied after the clip and so follows it. */
+@keyframes busCharge {
+  0%   { filter: drop-shadow(0 0 0 rgba(76, 195, 255, 0)); }
+  40%  { filter: drop-shadow(0 0 15px rgba(76, 195, 255, .8)); }
+  100% { filter: drop-shadow(0 0 0 rgba(76, 195, 255, 0)); }
+}
+
+/* Two animations per element: the entrance it always had, and the charge. The
+   second delay in each pair is when that panel lights, a beat behind the one
+   before it. */
+.rail   { animation: fadeIn 320ms ease backwards, busCharge 420ms ease-out 40ms backwards; }
 .rail-in > * { animation: slideInLeft 380ms cubic-bezier(.22,1,.36,1) backwards; animation-delay: 70ms; }
 .topbar { animation: fadeIn 420ms ease 130ms backwards; }
 
-.card { animation: riseIn 420ms cubic-bezier(.22,1,.36,1) backwards; }
-.card-calendar { animation-delay: 200ms; }
-.card-week     { animation-delay: 280ms; }
-.card-news     { animation-delay: 420ms; }
+.card { animation: riseIn 420ms cubic-bezier(.22,1,.36,1) backwards, busCharge 420ms ease-out backwards; }
+.card-calendar { animation-delay: 200ms, 200ms; }
+.card-week     { animation-delay: 280ms, 300ms; }
+.card-news     { animation-delay: 420ms, 430ms; }
+
+/* ---------- boot handoff ---------- */
+
+/* The dashboard is laid out the moment the payload lands, because the month
+   grid has to measure a real box (landmine 6) — but it is not *shown* until the
+   boot screen begins to leave. opacity, not [hidden]: display: none has no
+   layout, so the measurement would be taken against nothing.
+
+   The entrance animations are switched off across the same window. Left on they
+   would run behind an opaque panel and be finished before anyone saw them,
+   which is the entire problem this exists to fix. Removing the class starts
+   them, because an animation property changing from none to a name begins the
+   animation. */
+#app.is-booting { opacity: 0; }
+
+#app.is-booting .rail,
+#app.is-booting .rail-in > *,
+#app.is-booting .topbar,
+#app.is-booting .card { animation: none; }
 
 /* The emblem does its own breathing — do not add a second one on top. */
 

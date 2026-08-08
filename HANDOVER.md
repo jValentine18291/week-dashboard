@@ -264,6 +264,46 @@ rejected rather than rolled into March — and the month-grid cache is bounded,
 because a window left open stepping through months would otherwise grow it
 without limit.
 
+## The boot handoff
+
+The user asked for a smoother transition between the loading screen and the
+dashboard. The diagnosis was not what the request sounded like: there was
+already a fade. The problem was ordering. `$('app').hidden = false` ran as soon
+as the payload landed, so the entrance choreography — rail, topbar, three cards
+— completed in under a second, while the overlay stayed up for another 1.3.
+What reached the eye was a cross-fade between two finished still frames.
+
+Nine treatments were mocked up interactively before anything was built, all on
+one clock so they could be compared on look rather than length. That mock-up
+earned its keep twice over: the first version of the hex-iris option did
+nothing at all, because a `clip-path` hole needs the inner shape wound opposite
+to the outer one and both were traced clockwise, giving the enclosed area a
+winding number of 2 under the nonzero rule. It had been published without
+checking the geometry actually did what it claimed. The lesson generalises past
+mock-ups: verifying that code *runs* is not verifying that it *does the thing*.
+
+**Bus energize won**, over a discharge flash, forked arcs and a relay flicker.
+Two reasons, both in the docs already: it is the only candidate where the
+dashboard reads as *activating* rather than being uncovered, which is what the
+Motion section asks for; and it is the only one with no photosensitivity cost.
+The flicker was built and shown precisely so it could be rejected on the
+evidence — it is the one a viewer could reasonably read as a bug.
+
+`READY_HOLD_MS` came down from 900 to 400 in the same change. Note the asymmetry
+with `MIN_VISIBLE_MS`, which is protected by a rule against raising it for
+spectacle: shortening a stall where nothing moves is the same instinct, not the
+opposite of it.
+
+What was **not** taken, and why:
+
+- **A shared-element emblem hand-off** — the badge flying from the boot screen
+  into the rail. The strongest continuity available and the one that most
+  pushes against "activating, not flying in". It also needs real work first:
+  both emblems loop the 15-second choreography independently, so the arriving
+  instance would visibly jump unless `Emblem.create` gains a seek option.
+- **Anything that flashes.** Capping below white and holding under three
+  flashes a second makes a flash defensible, not free.
+
 ## Design reference
 
 **Superseded.** The original target was a light card-based mockup: white cards

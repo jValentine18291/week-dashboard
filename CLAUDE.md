@@ -262,7 +262,52 @@ first successful load, from `load()` in `app.js`.
   point booting a dashboard the user cannot see.
 - `MIN_VISIBLE_MS` is 1800. Both the handoff and the brief sanction a short
   floor for visual continuity. Do not raise it to buy spectacle.
+- `READY_HOLD_MS` is 400, down from 900. The old value was nine hundred
+  milliseconds in which nothing moved but the words. Shortening the hold is not
+  the same as shortening `MIN_VISIBLE_MS`, which is the rule above and stays.
 - It must never run on the five-minute auto-refresh. `BOOTED` guards this.
+
+### The handoff to the dashboard
+
+The dashboard used to finish its entrance about 1.3 seconds *before* the boot
+screen lifted, so the whole choreography played behind an opaque panel and the
+handoff read as a cut between two still frames. Three pieces fix that and they
+only work together:
+
+- **`Boot.start({ onLeave })`** fires on the frame `.is-leaving` is added, so the
+  dashboard's entrance is released against the same moment the overlay starts to
+  fade. It is called *before* the class is added — after, and the two motions
+  queue instead of overlapping.
+- **`#app.is-booting` holds appearance with `opacity`, never `[hidden]`.** The
+  month grid measures its own box (landmine 6), so the dashboard has to be laid
+  out while the boot screen is still up; `display: none` has no layout and the
+  measurement would be taken against nothing. Verified: with the class applied,
+  `#mon-grid` still measures its full height and all 42 cells.
+- **The entrance animations are `none` for that window.** Left on they run
+  behind the panel and are finished before anyone sees them, which is the whole
+  problem. Removing the class starts them, because an animation property going
+  from `none` to a name begins the animation — confirmed by a `currentTime` of 0
+  on release rather than a resumed clock.
+
+`app.js` also clears the class in a `finally`, not only in `onLeave`: if
+`finish()` ever threw, an invisible dashboard would be the worst failure
+available.
+
+The refresh is safe because `is-booting` is only applied when a boot object
+exists, and `BOOTED` makes that null on every later load. Checked structurally
+rather than by clock — same nodes, class never re-applied, no second boot —
+because a non-compositing browser never advances `currentTime` and any
+timing-based check there reads 0 and looks like a replay.
+
+**`busCharge`** is the visual treatment: charge enters at the rail and travels
+outward, each panel's rim igniting as it arrives — rail 40ms, calendar 200,
+week 300, news 430. It uses `drop-shadow`, not `box-shadow`: the panels are
+clipped to their chamfer and a box-shadow is discarded with everything else
+outside the silhouette, whereas a filter is applied after the clip and follows
+it. It was chosen over flashier candidates (a discharge flash, forked arcs, a
+relay flicker) on two grounds — it is the only one where the dashboard reads as
+*activating* rather than being uncovered, per the Motion section, and the only
+one with no photosensitivity cost.
 
 The centre badge hosts the same emblem as the rail, in `full` mode. The handoff
 offers a three.js cube; we do not take it — a WebGL dependency for a 64px

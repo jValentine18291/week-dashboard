@@ -829,7 +829,12 @@ function tickClock() {
 let BOOTED = false;
 
 async function load(force = false) {
-  const boot = !BOOTED && window.Boot ? Boot.start() : null;
+  // onLeave fires on the frame the boot screen starts to fade, which is when
+  // the dashboard's own entrance is released — the two overlap rather than
+  // queue. See the boot handoff section in styles.css.
+  const boot = !BOOTED && window.Boot
+    ? Boot.start({ onLeave: () => $('app').classList.remove('is-booting') })
+    : null;
   if (boot) boot.progress(30);
 
   let res;
@@ -860,6 +865,10 @@ async function load(force = false) {
   }
 
   $('gate').hidden = true;
+  // Laid out but not shown, so the month grid still measures a real box while
+  // the boot screen is up. Only while a boot is actually running — a refresh
+  // must never hide the dashboard it is refreshing.
+  $('app').classList.toggle('is-booting', !!boot);
   $('app').hidden = false;
 
   renderHeader();
@@ -872,7 +881,12 @@ async function load(force = false) {
   setPage(PAGE);
 
   BOOTED = true;
-  if (boot) await boot.finish();
+  if (boot) {
+    // onLeave clears the class mid-finish. This is the backstop: if finish ever
+    // throws, the dashboard must not be left invisible.
+    try { await boot.finish(); }
+    finally { $('app').classList.remove('is-booting'); }
+  }
 }
 
 function showGate() {

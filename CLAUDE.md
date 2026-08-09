@@ -400,9 +400,10 @@ whereas a tinted wash reads as a lit surface.
 Panels carry HUD corner brackets: eight `linear-gradient` layers painted into a
 single `::after`, two arms per corner, inset 7px so the square arms sit inside
 the rounded corner rather than fighting the curve. No extra DOM. `::before` is
-the animated top seam and is absolutely positioned — it must not go back to
-being a flex item, or it steals a row of the card's height and takes `::after`
-with it.
+the dim inset frame. Both of `.card-in`'s pseudo-elements are therefore taken,
+which is why the top seam is real markup — a `.card-seam` span at the top of
+each `.card-in`, absolutely positioned so it costs no layout. It must not
+become a flex item, or it steals a row of the card's height.
 
 If the arms grow (`--bracket-arm`, `--bracket-w`) or the inset shrinks, re-check
 that they do not cross any text. That is measurable: build the eight arm
@@ -428,8 +429,27 @@ render and would replay its entrance every five minutes, flashing the screen
 while the user is reading it. This is the reason `.card` carries the animation
 and `.mon-cell` does not.
 
-Ambient loops (`breathe`, `shimmer`, `seamSweep`, `nowPulse`) are on persistent
-elements for the same reason, so they run continuously instead of restarting.
+Ambient loops are on persistent elements for the same reason, so they run
+continuously instead of restarting. The full set, all CSS-only:
+
+- `shimmer` — the highlight crossing the progress bar
+- `nowPulse` — the current-time line in the week view
+- `seamGlint` — a glint travelling each card's top seam (`.card-seam`), 9s
+  cycle, desynced per card
+- `breathe` — the card icon tiles, staggered so the cards don't inhale in
+  unison; this keyframe existed unused for months while this file claimed it
+  ran, which is worth remembering when trusting docs over the stylesheet
+- `statusBreathe` — the Feeds Online dot in the rail; only the `.ok` state
+  breathes, an error should sit still and be looked at
+- `brGlint` — one surface's corner brackets briefly brighten; co-prime cycles
+  (11/13/17/19s) across the three cards and the rail so the combined pattern
+  effectively never repeats
+
+Every loop's 0% keyframe is its resting state, so even an unexpected restart
+lands on rest rather than mid-glow. A fourth ambient candidate — a drifting
+ground grid behind the panels — was mocked up and rejected by the user: it was
+the only one that sat behind text being read. Do not add it unasked, and keep
+new ambience off the panels' *contents* entirely.
 
 `prefers-reduced-motion: reduce` disables every animation and transition
 globally. None of the motion is load-bearing, so there is nothing to preserve.

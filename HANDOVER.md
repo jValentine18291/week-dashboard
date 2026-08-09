@@ -304,6 +304,26 @@ What was **not** taken, and why:
 - **Anything that flashes.** Capping below white and holding under three
   flashes a second makes a flash defensible, not free.
 
+## Ambient motion
+
+The user then asked for the dashboard itself to feel more alive. Investigating
+first paid off: the Motion docs named four ambient loops but only two existed —
+`breathe` was defined and applied to nothing, and `seamSweep` was pure fiction.
+Part of the request was motion that had been designed and never shipped.
+
+Four candidates went into a toggleable mock-up (same method as the boot
+treatments): a seam glint, breathing icons and status dot, corner-bracket
+glints on co-prime cycles, and a drifting ground grid. The user took the first
+three and rejected the drift — correctly, it was the only one sitting behind
+text being read. All of it lives on chrome, none of it on panel contents, and
+each loop rests at its 0% keyframe so a restart lands on rest.
+
+The bracket glint deviates from the mock in one honest way: the mock lit one
+corner at a time, but the real brackets are eight gradients sharing a single
+`::after`, so a card's whole corner set lights together. Four surfaces on
+11/13/17/19s cycles is irregular enough that nobody will miss per-corner
+control, and it cost no new DOM.
+
 ## Design reference
 
 **Superseded.** The original target was a light card-based mockup: white cards

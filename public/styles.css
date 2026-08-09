@@ -1071,9 +1071,11 @@ button:focus-visible,
 
 /* Ambient loops. These are on persistent elements too, so they run
    continuously rather than restarting on each refresh. */
+/* Was defined and applied to nothing — the docs claimed it ran, the stylesheet
+   disagreed. Rewritten at icon scale and put to work on the card icons below. */
 @keyframes breathe {
-  0%, 100% { box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35), 0 0 18px rgba(34, 211, 238, 0.16); }
-  50%      { box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.6),  0 0 30px rgba(34, 211, 238, 0.38); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(76, 195, 255, 0); }
+  50%      { box-shadow: 0 0 10px 1px rgba(76, 195, 255, .32); }
 }
 
 @keyframes shimmer {
@@ -1135,6 +1137,97 @@ button:focus-visible,
 .nowline { animation: nowPulse 2.6s ease-in-out infinite; }
 
 .gate-card { animation: riseIn 420ms cubic-bezier(.2,.7,.3,1) backwards; }
+
+/* ---------- ambient chrome ---------- */
+
+/* Everything here lives on card chrome and the rail — persistent elements, so
+   the five-minute re-render can never visibly restart a loop — and every
+   loop's 0% keyframe is its resting state, so even an unexpected restart lands
+   on rest, not mid-glow. Chosen from a four-way mock-up; the fourth candidate,
+   a drifting ground grid, was rejected as the only one sitting behind text
+   being read. */
+
+/* The seam is real markup because both of .card-in's pseudo-elements are taken
+   (inset frame, brackets — see HUD geometry). Absolutely positioned, so it
+   costs no layout; the travelling glint rides the seam's own ::after. */
+.card-seam {
+  position: absolute;
+  top: 0; left: 7%; right: 7%;
+  height: 1px;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(76, 195, 255, .35), transparent);
+}
+
+.card-seam::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  height: 3px;
+  width: 16%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(205, 239, 255, .95), transparent);
+  box-shadow: 0 0 9px 1px rgba(76, 195, 255, .8);
+  transform: translateX(-110%);
+  opacity: 0;
+  animation: seamGlint 9s linear infinite;
+}
+
+/* Desynced so the three cards never fire together. */
+.card-week .card-seam::after { animation-delay: 3.1s; }
+.card-news .card-seam::after { animation-delay: 6.2s; }
+
+/* The glint crosses in the first third of the cycle and rests for the rest.
+   Ambience is the gap between events, not the event. */
+@keyframes seamGlint {
+  0%   { transform: translateX(-110%); opacity: 0; }
+  4%   { opacity: 1; }
+  30%  { transform: translateX(640%); opacity: 1; }
+  34%  { transform: translateX(700%); opacity: 0; }
+  100% { transform: translateX(700%); opacity: 0; }
+}
+
+/* Card icons breathe, staggered so the three cards don't inhale in unison.
+   The emblem does its own breathing (rule above) and gets nothing extra. */
+.card-icon { animation: breathe 4.2s ease-in-out infinite; }
+.card-week .card-icon { animation-delay: 1.4s; }
+.card-news .card-icon { animation-delay: 2.8s; }
+
+/* A breathing status dot reads as monitoring. Only on .ok — an error state
+   should sit still and be looked at. app.js never rewrites this element, so
+   the loop never restarts. */
+.rail-meta-v.ok::before {
+  content: '';
+  display: inline-block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--ok);
+  margin-right: 5px;
+  vertical-align: 1px;
+  animation: statusBreathe 2.9s ease-in-out infinite;
+}
+
+@keyframes statusBreathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+  50%      { box-shadow: 0 0 6px 1.5px rgba(52, 211, 153, .55); }
+}
+
+/* One surface's corner brackets briefly brighten, then rest for most of the
+   cycle. Durations are co-prime — 11 / 13 / 17 / 19s — so the four surfaces
+   effectively never repeat a combined pattern; irregularity is what reads as
+   inhabited rather than mechanical. A card's whole corner set lights at once:
+   the arms share one pseudo-element (see HUD geometry), and four surfaces on
+   odd cycles is irregular enough without spending markup on per-corner
+   control. */
+.card-calendar .card-in::after { animation: brGlint 11s ease-in-out 2.3s infinite; }
+.card-week     .card-in::after { animation: brGlint 13s ease-in-out 6.1s infinite; }
+.card-news     .card-in::after { animation: brGlint 17s ease-in-out 9.7s infinite; }
+.rail-in::after                { animation: brGlint 19s ease-in-out 13.4s infinite; }
+
+@keyframes brGlint {
+  0%, 90%, 100% { filter: none; }
+  93%, 95% { filter: brightness(1.9) drop-shadow(0 0 4px rgba(103, 232, 249, .75)); }
+}
 
 /* ---------- pages ---------- */
 

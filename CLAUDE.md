@@ -411,6 +411,30 @@ rectangles per panel and test them against the bounding boxes of `.mon-what`,
 `.wk-title`, `.note-title` and friends. Currently zero overlap with a
 deliberately overfilled month.
 
+Scrollbars are themed once, globally, for all six scrolling surfaces — the week
+grid, This Week, Mail, the message reader, News and the chat log. A themed bar
+beside a default one looks worse than either, which is why the rule is `*` and
+not a selector list that a new panel would quietly fall outside of.
+
+**The two scrollbar syntaxes are mutually exclusive, not complementary.** Chrome
+treats any `scrollbar-width`/`scrollbar-color` on an element as opting that
+scroller into standard rendering, which switches `::-webkit-scrollbar` off for
+it — and `scrollbar-color` *inherits*, so a single declaration on `:root` kills
+the pseudo-elements document-wide. That is not a hypothetical: the first version
+of this shipped both, and every surface rendered a 15px Windows default with all
+eight webkit rules parsed and ignored. The standard properties are therefore
+fenced inside `@supports not selector(::-webkit-scrollbar)`, which is false in
+Chrome and true in Firefox. Do not "add Firefox support" by hoisting them out.
+
+Only gradients can carry the theme, and only the pseudo-elements do gradients,
+so Chrome — what this actually runs on — must keep them. The thumb is square on
+purpose: everything else here is chamfered, and a rounded pill would be the one
+soft shape on screen. `.mail-open-text` overrides to 6px because it is a scroll
+inside a panel inside a card, and a full-width bar there reads as a third frame.
+Verify by measuring the gutter (`getBoundingClientRect().width - clientWidth`
+minus borders), not by looking: 9 is ours, 15 is the default. Measure it on a
+**visible** page — an element on a hidden page has no box and reports 0.
+
 Check contrast after any colour change; it is measurable, so measure it rather
 than eyeballing. In the console with the dashboard loaded, walk the text nodes
 and compare each against its composited background — and composite translucent

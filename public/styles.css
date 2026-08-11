@@ -964,6 +964,64 @@ button:focus-visible,
 .wk-detail a { color: var(--blue); text-decoration: none; }
 .wk-detail a:hover { text-decoration: underline; }
 
+/* ---------- scrollbars ---------- */
+
+/* Applied globally rather than per panel. Six surfaces scroll — the week grid,
+   This Week, Mail, the message reader, News and the chat log — and a themed
+   bar beside a default one reads worse than either.
+
+   The two syntaxes are mutually exclusive, not complementary. Chrome treats
+   ANY scrollbar-width/scrollbar-color on an element as opting that scroller
+   into standard rendering, which disables ::-webkit-scrollbar for it — and
+   scrollbar-color inherits, so one declaration on :root kills the pseudo
+   elements document-wide. Measured: 15px default bars with all eight webkit
+   rules parsed and ignored.
+   So the standard properties are fenced to browsers with no ::-webkit-
+   scrollbar support, i.e. Firefox. Chrome and Edge — what this runs on — get
+   the pseudo elements, which are the only ones that can do gradients. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 200, 255, 0.42) rgba(0, 0, 0, 0.32);
+  }
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.32);
+  /* Hairline down the inner edge, matching the panel seams. */
+  box-shadow: inset 1px 0 0 rgba(0, 200, 255, 0.12);
+}
+
+/* Square on purpose. Everything else here is chamfered or angular; a rounded
+   pill would be the one soft shape on the screen. */
+*::-webkit-scrollbar-thumb {
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(0, 200, 255, 0.5), rgba(22, 140, 255, 0.42));
+  box-shadow: inset 0 0 0 1px rgba(0, 220, 255, 0.45);
+  transition: background 160ms cubic-bezier(.22, 1, .36, 1);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(0, 225, 255, 0.85), rgba(22, 140, 255, 0.7));
+  box-shadow: inset 0 0 0 1px rgba(0, 240, 255, 0.9), 0 0 10px rgba(0, 200, 255, 0.45);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, rgba(120, 240, 255, 0.95), rgba(0, 200, 255, 0.8));
+}
+
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* The reader is a scroll inside a panel that is already inside a card, so it
+   gets a slimmer bar — a full-width one there reads as a third frame. */
+.mail-open-text::-webkit-scrollbar { width: 6px; }
+.mail-open-text::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.25); box-shadow: none; }
+
 /* ---------- mail ---------- */
 
 /* Mail has no dashboard card, so the badge carries the glanceable half — the

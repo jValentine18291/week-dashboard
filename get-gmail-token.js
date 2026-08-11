@@ -15,7 +15,12 @@
  * client secret.
  */
 
-require('dotenv').config();
+const path = require('path');
+
+// Resolved against this file, not the shell's working directory. dotenv
+// defaults to cwd, so running the script from anywhere but the project root
+// silently found no .env and reported the credentials as missing.
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const http = require('http');
 const crypto = require('crypto');

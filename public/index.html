@@ -70,6 +70,15 @@
         </svg>
         <span>News</span>
       </button>
+      <button class="rail-item" data-page="mail" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+          <path d="m3 7 9 6 9-6"></path>
+        </svg>
+        <span>Mail</span>
+        <span class="rail-badge" id="mail-badge" hidden>0</span>
+      </button>
     </nav>
 
     <div class="rail-foot">
@@ -223,6 +232,31 @@
        unique whichever page is showing. -->
   <main class="page" id="page-calendar" hidden></main>
   <main class="page" id="page-news" hidden></main>
+
+  <!-- Mail has no dashboard card: the viewport is already full, and a fifth
+       panel would squeeze the calendar. The unread count rides on the rail
+       badge instead, so it stays glanceable without costing any space. -->
+  <main class="page" id="page-mail" hidden>
+    <section class="card card-mail is-full" aria-labelledby="h-mail">
+      <div class="card-in">
+        <div class="card-head">
+          <div class="card-head-left">
+            <span class="card-icon icon-mail" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                <path d="m3 7 9 6 9-6"></path>
+              </svg>
+            </span>
+            <h2 id="h-mail" class="card-title">Inbox</h2>
+          </div>
+          <span id="mail-meta" class="card-meta"></span>
+        </div>
+        <div id="mail-list" class="mail-list"></div>
+        <p id="mail-error" class="card-error" hidden></p>
+      </div>
+    </section>
+  </main>
 
   <aside class="chat" id="chat" aria-label="Assistant">
     <div class="chat-in">

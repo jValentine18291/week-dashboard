@@ -37,10 +37,10 @@ window.Boot = (function () {
       icon: 'M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3a15 15 0 010 18a15 15 0 010-18' },
     { id: 'market', col: 'r', name: 'MARKET FEED', desc: 'Not provisioned', colour: '#a78bfa',
       icon: 'M3 17l5-6 4 4 5-8 4 5', standby: true },
-    // Notes moved to standby when its panel was replaced by News. The Notion
-    // reader still exists; only the panel is gone.
-    { id: 'notes', col: 'r', name: 'NOTES CACHE', desc: 'Panel deferred', colour: '#a78bfa',
-      icon: 'M5 3h8l6 6v12H5zM13 3v6h6M8 13.5h7M8 17.5h4.5', standby: true }
+    // Starts in standby and is promoted to a real module by app.js only when a
+    // refresh token is actually configured.
+    { id: 'mail', col: 'r', name: 'MAIL RELAY', desc: 'Gmail headers, metadata only', colour: '#a78bfa',
+      icon: 'M3 5h18v14H3zM3 7l9 6 9-6', standby: true }
   ];
 
   var CIRCUIT = [
@@ -309,6 +309,9 @@ window.Boot = (function () {
       if (!c || c.state === 'done') return;
       c.state = 'done';
       c.card.classList.add('lit');
+      // A standby card is dimmed to .4. If it is being promoted to a real
+      // module, undim it or the tick lands on a greyed-out row.
+      c.card.style.opacity = '';
       c.dots.forEach(function (d) {
         d.style.background = ok ? '#34d399' : '#ff6b8a';
         d.style.boxShadow = '0 0 6px ' + (ok ? '#34d399' : '#ff6b8a');

@@ -12,7 +12,7 @@ let VIEW = localStorage.getItem('cal-view') === 'week' ? 'week' : 'month';
 
 // Which rail section is showing, remembered for the same reason as VIEW. Ask is
 // not a page — it is a drawer, and opens over whichever page is up.
-const PAGES = ['dashboard', 'calendar', 'news'];
+const PAGES = ['dashboard', 'calendar', 'news', 'mail'];
 let PAGE = PAGES.indexOf(localStorage.getItem('page')) >= 0
   ? localStorage.getItem('page') : 'dashboard';
 
@@ -684,6 +684,49 @@ function place(node, host, before) {
   else host.appendChild(node);
 }
 
+function renderMail() {
+  const mail = (PAYLOAD.mail && PAYLOAD.mail.data) || { unread: 0, messages: [], configured: false };
+  const badge = $('mail-badge');
+  const list = $('mail-list');
+
+  // The badge is the whole point of the glanceable half: the count is visible
+  // from every page without a panel taking dashboard space.
+  badge.hidden = !mail.unread;
+  badge.textContent = mail.unread > 99 ? '99+' : String(mail.unread);
+
+  $('mail-meta').textContent = mail.configured
+    ? `${mail.unread} unread`
+    : '';
+
+  if (!mail.configured) {
+    list.innerHTML = '<p class="empty">Mail is not connected. Set GMAIL_REFRESH_TOKEN to switch it on.</p>';
+    showError('mail-error', PAYLOAD.mail && PAYLOAD.mail.error);
+    return;
+  }
+
+  if (!mail.messages.length) {
+    list.innerHTML = '<p class="empty">Nothing unread.</p>';
+    showError('mail-error', PAYLOAD.mail.error);
+    return;
+  }
+
+  list.innerHTML = mail.messages
+    .map((m) => {
+      const c = colourFor(m.from || '', PALETTE);
+      return `<div class="mail-item">
+        <span class="mail-dot" style="background:${c.fg};box-shadow:0 0 8px ${c.fg}"></span>
+        <span class="mail-body">
+          <span class="mail-from" style="color:${c.fg}">${escapeHtml(m.from)}</span>
+          <span class="mail-subject">${escapeHtml(m.subject)}</span>
+        </span>
+        <span class="mail-ago">${escapeHtml(agoOf(m.received))}</span>
+      </div>`;
+    })
+    .join('');
+
+  showError('mail-error', PAYLOAD.mail.error);
+}
+
 function setPage(next) {
   PAGE = PAGES.indexOf(next) >= 0 ? next : 'dashboard';
   localStorage.setItem('page', PAGE);
@@ -701,6 +744,9 @@ function setPage(next) {
   dash.hidden = PAGE !== 'dashboard';
   $('page-calendar').hidden = PAGE !== 'calendar';
   $('page-news').hidden = PAGE !== 'news';
+  // Mail lives only on its own page, so it needs no place() call — its card
+  // never moves between hosts the way the calendar and news cards do.
+  $('page-mail').hidden = PAGE !== 'mail';
 
   // Unhide before moving: the month grid measures its own box, so it has to be
   // in a laid-out container by the time renderCalendar runs below.
@@ -717,6 +763,7 @@ function setPage(next) {
 
   if (!PAYLOAD) return;
   renderNews();
+  renderMail();
   renderCalendar();   // last, for the reason given in load()
 }
 
@@ -861,6 +908,11 @@ async function load(force = false) {
     boot.module('calendar', !PAYLOAD.calendar.error);
     boot.module('tasks', !PAYLOAD.tasks.error);
     boot.module('news', !PAYLOAD.news.error);
+    // Only report mail if it is actually configured — a tick for a subsystem
+    // that is switched off would be a lie. Unconfigured, it stays standby.
+    if (PAYLOAD.mail && PAYLOAD.mail.data && PAYLOAD.mail.data.configured) {
+      boot.module('mail', !PAYLOAD.mail.error);
+    }
     boot.progress(95);
   }
 

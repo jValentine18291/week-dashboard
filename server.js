@@ -14,6 +14,7 @@ const { fetchCalendarEvents } = require('./lib/calendar');
 const { fetchTasks, fetchNotes } = require('./lib/notion');
 const { streamChat, DEFAULT_BASE_URL } = require('./lib/chat');
 const { fetchNews } = require('./lib/news');
+const { fetchMail } = require('./lib/gmail');
 const week = require('./lib/week');
 
 const app = express();
@@ -45,6 +46,15 @@ const newsFeeds = (process.env.NEWS_FEEDS || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
+
+// Gmail, read-only and metadata-only. Blank refresh token disables the panel
+// entirely; the rest of the dashboard is unaffected.
+const MAIL_LIMIT = Number(process.env.GMAIL_LIMIT || 8);
+const gmailConfig = {
+  clientId: process.env.GMAIL_CLIENT_ID,
+  clientSecret: process.env.GMAIL_CLIENT_SECRET,
+  refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+};
 
 const chatBaseUrl = process.env.OPENAI_BASE_URL || DEFAULT_BASE_URL;
 
@@ -231,10 +241,11 @@ async function buildPayload() {
   // Notes is deliberately absent: the panel was replaced by News at the user's
   // request, so fetching it would be a Notion call nobody reads. lib/notion.js
   // still exports fetchNotes — see CLAUDE.md for how to bring the panel back.
-  const [events, tasks, news] = await Promise.allSettled([
+  const [events, tasks, news, mail] = await Promise.allSettled([
     monthCalendar(now),
     fetchTasks(notionConfig, week.toLocalISODate(week.endOfWeek(now))),
     fetchNews(newsFeeds, NEWS_LIMIT),
+    fetchMail(gmailConfig, MAIL_LIMIT),
   ]);
 
   const unwrap = (r, label) => {
@@ -251,6 +262,12 @@ async function buildPayload() {
     calendar: unwrap(events, 'Calendar'),
     tasks: unwrap(tasks, 'Tasks'),
     news: unwrap(news, 'News'),
+    // Shaped as an object rather than a list, so unwrap's [] default would be
+    // wrong here — give it its own empty shape.
+    mail: (() => {
+      const r = unwrap(mail, 'Mail');
+      return { data: r.data && r.data.messages ? r.data : { unread: 0, messages: [], configured: false }, error: r.error };
+    })(),
   };
 }
 
@@ -384,6 +401,11 @@ app.get('/healthz', (req, res) => {
     // rather than secret material, and it is the one thing that makes a
     // truncated paste — which Google reports as a generic 400 — visible.
     `chat_key_len=${chatConfig.apiKey ? chatConfig.apiKey.length : 0}`,
+    // Which of the three Gmail values are present. The refresh token is the one
+    // that is easy to forget on a second machine or on the host.
+    `mail=${gmailConfig.refreshToken ? 'set' : 'unset'}`,
+    `mail_client=${gmailConfig.clientId ? 'set' : 'unset'}`,
+    `mail_secret=${gmailConfig.clientSecret ? 'set' : 'unset'}`,
   ];
   res.type('text/plain').send(parts.join(' '));
 });

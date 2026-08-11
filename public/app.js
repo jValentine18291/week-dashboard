@@ -713,18 +713,81 @@ function renderMail() {
   list.innerHTML = mail.messages
     .map((m) => {
       const c = colourFor(m.from || '', PALETTE);
-      return `<div class="mail-item">
+      return `<button class="mail-item" type="button" data-mail-id="${escapeHtml(m.id)}" aria-expanded="false">
         <span class="mail-dot" style="background:${c.fg};box-shadow:0 0 8px ${c.fg}"></span>
         <span class="mail-body">
           <span class="mail-from" style="color:${c.fg}">${escapeHtml(m.from)}</span>
           <span class="mail-subject">${escapeHtml(m.subject)}</span>
         </span>
         <span class="mail-ago">${escapeHtml(agoOf(m.received))}</span>
-      </div>`;
+      </button>`;
     })
     .join('');
 
   showError('mail-error', PAYLOAD.mail.error);
+}
+
+// Bodies are fetched on click, one at a time, and cached for the life of the
+// page so reopening a message costs nothing.
+const MAIL_BODIES = new Map();
+
+async function toggleMailBody(btn) {
+  const open = btn.getAttribute('aria-expanded') === 'true';
+  const next = btn.nextElementSibling;
+  if (open && next && next.classList.contains('mail-open')) {
+    next.remove();
+    btn.setAttribute('aria-expanded', 'false');
+    return;
+  }
+
+  const id = btn.dataset.mailId;
+  const panel = document.createElement('div');
+  panel.className = 'mail-open';
+  panel.textContent = 'Loading…';
+  btn.after(panel);
+  btn.setAttribute('aria-expanded', 'true');
+
+  try {
+    let body = MAIL_BODIES.get(id);
+    if (!body) {
+      const res = await fetch('/api/mail/' + encodeURIComponent(id));
+      if (!res.ok) {
+        const msg = await res.json().catch(() => ({}));
+        panel.textContent = msg.error || 'Could not load that message.';
+        panel.classList.add('is-error');
+        return;
+      }
+      body = await res.json();
+      MAIL_BODIES.set(id, body);
+    }
+
+    panel.classList.remove('is-error');
+    panel.textContent = '';
+
+    const meta = document.createElement('div');
+    meta.className = 'mail-open-meta';
+    meta.textContent = body.source === 'text/html'
+      ? 'Converted from HTML'
+      : body.source === 'none' ? 'No readable text — attachment only' : 'Plain text';
+    panel.appendChild(meta);
+
+    // textContent, never innerHTML. The server strips markup, but the real
+    // guarantee is that nothing here can ever be parsed as HTML.
+    const pre = document.createElement('div');
+    pre.className = 'mail-open-text';
+    pre.textContent = body.text || '(no text content)';
+    panel.appendChild(pre);
+
+    if (body.truncated) {
+      const cut = document.createElement('div');
+      cut.className = 'mail-open-meta';
+      cut.textContent = 'Truncated — open it in Gmail for the rest.';
+      panel.appendChild(cut);
+    }
+  } catch (err) {
+    panel.textContent = 'Could not reach the server.';
+    panel.classList.add('is-error');
+  }
 }
 
 function setPage(next) {
@@ -980,6 +1043,11 @@ document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-page]');
   if (!btn || btn.dataset.page === PAGE) return;
   setPage(btn.dataset.page);
+});
+
+document.addEventListener('click', (e) => {
+  const row = e.target.closest('[data-mail-id]');
+  if (row) toggleMailBody(row);
 });
 
 $('cal-prev').addEventListener('click', () => goAnchor(stepAnchor(-1)));

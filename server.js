@@ -14,7 +14,7 @@ const { fetchCalendarEvents } = require('./lib/calendar');
 const { fetchTasks, fetchNotes } = require('./lib/notion');
 const { streamChat, DEFAULT_BASE_URL } = require('./lib/chat');
 const { fetchNews } = require('./lib/news');
-const { fetchMail } = require('./lib/gmail');
+const { fetchMail, fetchBody } = require('./lib/gmail');
 const week = require('./lib/week');
 
 const app = express();
@@ -378,6 +378,26 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     send({ error: describeChatFailure(err) });
   }
   res.end();
+});
+
+// One message body, fetched only when the user opens it. Bodies are never in
+// the dashboard payload: they should not sit in the browser unasked, and they
+// would bloat a response that refreshes every sixty seconds.
+app.get('/api/mail/:id', requireAuth, async (req, res) => {
+  if (!gmailConfig.refreshToken) {
+    return res.status(503).json({ error: 'Mail is not connected.' });
+  }
+  // Gmail ids are opaque but always url-safe. Reject anything else rather than
+  // interpolating it into an upstream path.
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(req.params.id)) {
+    return res.status(400).json({ error: 'Bad message id.' });
+  }
+  try {
+    res.json(await fetchBody(gmailConfig, req.params.id));
+  } catch (err) {
+    console.error('Mail body failed:', err.message);
+    res.status(502).json({ error: 'Could not load that message.' });
+  }
 });
 
 app.get('/healthz', (req, res) => {

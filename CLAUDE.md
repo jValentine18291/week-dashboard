@@ -127,14 +127,30 @@ These are all load-bearing and all have cost real debugging time. Do not
    a small one. Two consequences, both load-bearing:
    `renderCalendar()` runs **last** in `load()`, after the other panels have
    claimed their height, or it measures a box it is about to lose; and
-   `CHIP_H`/`NUM_RESERVE` must track the real `.mon-chip` and `.mon-num` sizes
-   in `styles.css`. As measured: a chip is 17.2px plus a 2px gap, and the day
-   number occupies 17.5px plus 4px of cell padding — so the constants (19 and
-   23) each carry only a little headroom. Anything that grows the card header,
-   the chip font or the day number costs a visible chip line per day; re-measure
-   rather than guess, and confirm `clipped cells` is still 0. A `ResizeObserver` re-fits on later resizes, but the first
-   paint deliberately does not depend on it — observer callbacks are delivered
-   with the rendering lifecycle, which a non-compositing browser never runs.
+   `CHIP_H`/`NUM_RESERVE` must track the real `.mon-chip` and `.mon-top` sizes
+   in `styles.css`. As measured: a chip is a 13px line box plus a 1px gap, and
+   `.mon-top` is 14.5px plus 2px of cell padding, 1px of `.mon-events` padding
+   and a 1px cell border — so the constants (14 and 19) carry about half a pixel
+   of headroom each. Anything that grows the card header, the chip font or the
+   day number costs a visible chip line per day; re-measure rather than guess,
+   and confirm `clipped cells` is still 0. A `ResizeObserver` re-fits on later
+   resizes, but the first paint deliberately does not depend on it — observer
+   callbacks are delivered with the rendering lifecycle, which a non-compositing
+   browser never runs.
+
+   **Leading, not glyph size, is what buys capacity here.** The chips were
+   10.5px type sitting in a 17.2px line box; they are now 10px type in a 13px
+   box. Half a pixel came off the text and four came off the line. The same
+   applies to everything else in the cell — the day-name bar, the cell padding,
+   the inter-chip gap — so reach for those before shrinking type that has to
+   stay readable at 10px.
+
+   **The overflow count is not a chip.** It lives in `.mon-top` beside the day
+   number, so it costs no vertical space. It used to be an item in the chip
+   stack, which meant that at a capacity of 1 the indicator consumed the only
+   line and the cell rendered as a bare `"3 events"` naming nothing — the
+   failure the user actually reported. Putting it back in the stack reintroduces
+   that, whatever the type sizes are.
 
 7. **An event belongs to every day it covers** — `coveredDayKeys()` in
    `public/app.js`. Grouping by `dayKey(event.start)` is the obvious thing to
@@ -286,9 +302,11 @@ sizes clear the ~12px floor. It carries a two-layer glow — a tight filament an
 a wide dim bloom — because one shadow alone reads as a blur rather than as neon.
 
 That heading is bigger than what it replaced, which is exactly what landmine 6
-warns about. Measured after the change: chips per day unchanged at five on the
-dashboard and six on the Calendar page, no clipped cells, no page scroll,
-contrast 16.3:1. Re-measure if it grows again.
+warns about. Measured at the time: chips per day unchanged, no clipped cells,
+no page scroll, contrast 16.3:1. Re-measure if it grows again. The absolute
+counts have since risen — six on the dashboard, seven on the Calendar page —
+because the cell type was tightened later; what this paragraph records is that
+the heading cost nothing, not the number itself.
 
 ## Boot sequence
 
@@ -597,15 +615,40 @@ console.log('clipped cells:', [...document.querySelectorAll('.mon-events')]
   .filter(e => e.scrollHeight > e.clientHeight + 1).length);            // must be 0
 ```
 
-Check both at 1920×1080 and at a smaller window — a month cell that is too
-short must fall back to a `"N events"` count, never to a bare `"+N more"` with
-nothing named.
+Check both at 1920×1080 and at a smaller window. **No cell may name nothing** —
+that is the invariant, and it is directly measurable:
 
-Run that on **all three pages**, not just the dashboard: the Calendar and News
-pages give a card the whole viewport, which is exactly where an uncapped panel
-starts pushing the page taller. Last measured at 1920×1080 — no page scrolls,
-no clipped cells, and the calendar grid fits six events per day on its own page
-against five on the dashboard.
+```js
+console.log('cells naming nothing:', [...document.querySelectorAll('.mon-events')]
+  .filter(e => e.querySelectorAll('.mon-chip').length === 0).length);   // must be 0
+```
+
+It replaces an older rule that said a too-short cell must fall back to an
+`"N events"` count. That fallback was the bug, not the safeguard: it fired
+whenever capacity hit 1 and described the day without naming a single event.
+Go small enough and it is reproducible — 1280×610 is roughly a 1080p screen at
+150% Windows scaling, and it lands on capacity 1.
+
+Capacity by window height, measured on the dashboard with the news panel at its
+176px cap (a short feed inflates the calendar and flatters the numbers):
+
+| viewport | cell height | events named | before this change |
+|---|---|---|---|
+| 1920×1000 | 110px | 6 | 3 |
+| 1536×824 | 81px | 4 | 2 |
+| 1440×700 | 60px | 2 | 0 — read `"N events"` |
+| 1280×610 | 45px | 1 | 0 — read `"N events"` |
+
+Run the page checks on **all four pages**, not just the dashboard: Calendar,
+News and Mail each give a card the whole viewport, which is where an uncapped
+panel starts pushing the page taller. Last measured at 1920×1000 — no page
+scrolls, no clipped cells, seven events per day on the Calendar page against
+six on the dashboard.
+
+For the month grid specifically, `verify-visual.html` renders three pinned cell
+heights (45/60/110px) and screenshots them. Capacity arithmetic is duplicated
+there by hand, so `CHIP_H`/`NUM_RESERVE` changes have to be copied across or
+the picture stops being of the thing that ships.
 
 The frame invariants behind month and week stepping are pure date maths, so
 assert them rather than clicking through: for every day of several years,

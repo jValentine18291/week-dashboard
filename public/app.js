@@ -205,8 +205,8 @@ function renderCalendar() {
 
 // ---------- month view ----------
 
-const CHIP_H = 19;      // .mon-chip line box plus its 2px gap
-const NUM_RESERVE = 23; // .mon-num plus the cell's own vertical padding
+const CHIP_H = 14;      // .mon-chip line box plus its 1px gap
+const NUM_RESERVE = 19; // .mon-top plus the cell's own vertical padding
 
 let LAST_CAPACITY = null;
 
@@ -252,19 +252,15 @@ function renderMonth() {
       const k = dayKey(iso);
       const list = byDay[k] || [];
 
-      // With room for only one line, a bare "+6 more" would show the day as
-      // busy without naming anything. A plain count is more use than that.
-      let shown = list;
-      let overflow = '';
-      if (list.length > capacity) {
-        if (capacity === 1) {
-          shown = [];
-          overflow = `<span class="mon-more">${list.length} events</span>`;
-        } else {
-          shown = list.slice(0, capacity - 1);
-          overflow = `<span class="mon-more">+${list.length - shown.length} more</span>`;
-        }
-      }
+      // The count rides on the day-number row, so it costs no chip line and the
+      // stack is free to name `capacity` events rather than `capacity - 1`.
+      // It used to live in the stack, which is what produced the "2 events"
+      // cells: at a capacity of one the indicator took the only line and the
+      // day was described without a single event being named.
+      const shown = list.slice(0, capacity);
+      const overflow = list.length > capacity
+        ? `<span class="mon-more" title="${list.length - capacity} more">+${list.length - capacity}</span>`
+        : '';
 
       const chips = shown
         .map((e) => {
@@ -285,8 +281,11 @@ function renderMonth() {
         .join('');
 
       return `<div class="mon-cell ${k === todayKey ? 'is-today' : ''} ${monthKey(iso) !== thisMonth ? 'is-outside' : ''}">
-        <span class="mon-num">${fmt(new Date(iso), { day: 'numeric' })}</span>
-        <div class="mon-events">${chips}${overflow}</div>
+        <div class="mon-top">
+          <span class="mon-num">${fmt(new Date(iso), { day: 'numeric' })}</span>
+          ${overflow}
+        </div>
+        <div class="mon-events">${chips}</div>
       </div>`;
     })
     .join('');

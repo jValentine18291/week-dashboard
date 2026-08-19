@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>visual fixture — news panel</title>
+<!--
+  Screenshot fixture for the news panel. Not served: it lives outside public/
+  and loads the real stylesheet over a relative path, so open it with file://.
+
+    "/c/Program Files/Google/Chrome/Application/chrome.exe" \
+      --headless=new --no-sandbox --disable-gpu --force-device-scale-factor=2 \
+      --window-size=1150,560 --virtual-time-budget=4000 \
+      --user-data-dir=/tmp/cprof --screenshot=out.png \
+      "file:///P:/1-SCAN/week-dashboard/verify-visual.html"
+
+  This exists because the panel's real failures are things measurement does not
+  catch. The scrollbar sitting on top of the corner bracket measured perfectly
+  fine — every number was within its box — and was obvious the moment there was
+  a picture. CLAUDE.md's note that two of three real bugs here were only visible
+  in a screenshot still holds; this is how to get one.
+
+  Two cards on purpose: the same list at scroll top and scrolled to the end.
+  The bottom fade is only correct if it dissolves a partial row in the first and
+  leaves the last row crisp in the second, so one card cannot show whether it
+  works.
+-->
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="public/styles.css">
+<style>
+  /* Reproduce the dashboard's grid slot for the news card and nothing else, so
+     what is on screen is the real .card / .card-in / .news-list construction at
+     the real 176px cap. Entrance animations off: they have `backwards` fill and
+     a delay, so a screenshot taken before they start catches the `from`
+     transform rather than the layout. */
+  * , *::before, *::after { animation: none !important; transition: none !important; }
+  body { margin: 0; background: var(--bg, #02040a); }
+  .harness { padding: 24px; width: 1100px; }
+  .harness > .card-news { max-height: 176px; }   /* matches .layout > .card-news */
+  .label { font: 600 12px Rajdhani, sans-serif; color: #7fd8ff; letter-spacing: .18em;
+           text-transform: uppercase; padding: 18px 24px 6px; }
+</style>
+</head>
+<body>
+
+<p class="label">scrolled to top</p>
+<div class="harness">
+  <section class="card card-news">
+    <div class="card-in">
+      <span class="card-seam" aria-hidden="true"></span>
+      <div class="card-head">
+        <div class="card-head-left">
+          <span class="card-icon icon-news" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"></path>
+            </svg>
+          </span>
+          <h2 class="card-title">Global Events &amp; News</h2>
+        </div>
+        <div class="card-head-right"><span class="card-meta">8 latest</span></div>
+      </div>
+      <div class="news-list" id="list-top"></div>
+    </div>
+  </section>
+</div>
+
+<p class="label">scrolled to the very bottom</p>
+<div class="harness">
+  <section class="card card-news">
+    <div class="card-in">
+      <span class="card-seam" aria-hidden="true"></span>
+      <div class="card-head">
+        <div class="card-head-left">
+          <span class="card-icon icon-news" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"></path>
+            </svg>
+          </span>
+          <h2 class="card-title">Global Events &amp; News</h2>
+        </div>
+        <div class="card-head-right"><span class="card-meta">8 latest</span></div>
+      </div>
+      <div class="news-list" id="list-bottom"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const STORIES = [
+  ['Chinese humanoid robot maker Unitree set to jump over 600% in Shanghai debut', 'CNA', '15M AGO'],
+  ['Türkiye rejects Israeli claims after strike on Syria air base', 'CNA', '18M AGO'],
+  ['Smarter cooling, cleaner air: How AI is changing home comfort', 'CNA', '32M AGO'],
+  ['Singapore core inflation eases for a third straight month', 'CNA', '1H AGO'],
+  ['BBC World: markets steady as central banks hold rates', 'BBC', '2H AGO'],
+  ['Record heat pushes power demand to a new seasonal peak', 'BBC', '3H AGO'],
+  ['Shipping rates fall as Red Sea transits partially resume', 'CNA', '4H AGO'],
+  ['New rules for e-scooters take effect across the island', 'CNA', '5H AGO'],
+];
+const row = ([title, src, ago]) => `<a class="news-item" href="#">
+  <span class="news-thumb is-blank" style="color:#7fd8ff;background:rgba(0,200,255,.14)">${src.slice(0,2)}</span>
+  <span class="news-body">
+    <span class="news-title">${title}</span>
+    <span class="news-meta">
+      <span class="news-source" style="color:#7fd8ff">${src}</span>
+      <span class="news-dot"></span>
+      <span class="news-ago">${ago}</span>
+    </span>
+  </span></a>`;
+const html = STORIES.map(row).join('');
+document.getElementById('list-top').innerHTML = html;
+const bottom = document.getElementById('list-bottom');
+bottom.innerHTML = html;
+bottom.scrollTop = bottom.scrollHeight;
+</script>
+</body>
+</html>

@@ -193,6 +193,7 @@ public/app.js        rendering + boot wiring
 public/boot.js       boot sequence (vanilla port of the handoff)
 public/emblem.js     animated hex-cube emblem (vanilla port of the handoff)
 verify-calendar.js   DTSTART-anchoring fixture
+verify-visual.html   file:// screenshot fixture for the news panel
 ```
 
 ## Pages
@@ -232,27 +233,45 @@ collapse it back into one element with a `border`.
 `.card-in::before` is the dim inset frame, `.card-in::after` the corner
 brackets. Both pseudo-elements are taken — anything else needs real markup.
 
-**The inset frame paints over panel content, so scrollers have to stop short of
-it.** It sits at `inset: 5px` with a 1px border, occupying 5–6px in from the
-edge at `z-index: 2`. A scroll container filling `.card-in` therefore runs 5px
-*past* it, and whichever row lands at the bottom is guillotined mid-height with
-the cut outside the frame rather than inside it — measured on News, 25.6px of a
-50.8px story left showing, crossed by the frame line. `.news-list`,
-`.week-list` and `.mail-list` share one rule that fixes it, and both halves are
-load-bearing: `margin-bottom: var(--frame-inset)` pulls the scroll *viewport*
-inside the frame, which padding cannot do because padding does not move a
-scroller's viewport; a bottom `mask-image` then dissolves a partly-scrolled row
-instead of slicing it. `padding-bottom` must stay equal to `--list-fade` — at
-full scroll that padding is what occupies the fade zone, so the last row stays
-crisp instead of dimming for no reason. `--frame-inset` is derived from the
-frame's own inset, so moving one means moving the other.
+**Both pseudo-elements paint over panel content, so scrollers have to stop
+short of them.** The frame sits at `inset: 5px` with a 1px border (5–6px in),
+the brackets at `inset: 7px`, both above the content. A scroll container
+filling `.card-in` runs past both on three sides, and it shows up twice over:
+whichever row lands at the bottom is guillotined mid-height with the cut
+outside the frame — measured on News, 25.6px of a 50.8px story — and the
+scrollbar, which lives at the scroller's right edge, puts a 9px bright thumb on
+top of the corner bracket.
+
+`.news-list`, `.week-list` and `.mail-list` share one rule. Three parts, all
+load-bearing:
+
+- `margin: 0 var(--frame-inset) var(--frame-inset)` pulls the scroll *viewport*
+  inside the furniture. Padding cannot do this — padding does not move a
+  scroller's viewport, so it only helps once you have scrolled to the end. Top
+  stays flush because the card head sits directly above with its own border.
+- A bottom `mask-image` dissolves a partly-scrolled row instead of slicing it,
+  which doubles as the signal that there is more below. It does **not** dim the
+  scrollbar; Chrome leaves that outside the element mask, checked in a capture.
+- `padding-bottom` must stay equal to `--list-fade`. At full scroll that
+  padding is what occupies the fade zone, so the last row stays crisp instead
+  of dimming for no reason.
+
+`--frame-inset` is 8px because it clears the brackets at 7px, not just the
+frame at 6px. It is derived from those two insets — move either and it moves.
 
 The rule is grouped across all three lists because the overshoot is structural
 to the card construction, not a News bug; News is only the panel with enough
-rows to make it visible. Verified by measuring each list's bottom against
-`.card-in`'s bottom minus 6 — it must be `<= 0`, and it was `+5` before. The
-change costs the calendar nothing: chips per day and `.card-calendar .card-in`
-height are byte-identical with the rule applied and forced off.
+rows to make it visible. Verified by measuring each list's edges against
+`.card-in`'s box inset by 7 — all three must be `<= 0`, and the bottom was `+5`
+before. The change costs the calendar nothing: chips per day and
+`.card-calendar .card-in` height are identical with the rule applied and forced
+off, which is the A/B worth repeating rather than assuming.
+
+**The scrollbar-on-bracket half of this measured perfectly fine.** Every number
+was inside its own box; it was only wrong to look at. See `verify-visual.html`
+for how to get a picture — it is a file:// fixture of the news panel at scroll
+top and scroll end, screenshotted with headless Chrome, and it needs no server
+and no credentials.
 
 Type: **Orbitron** for headings and system labels only, **Rajdhani** for body
 and data. Do not set Orbitron on small text; it is unreadable below ~12px.

@@ -39,11 +39,12 @@
   --gutter: 52px;
   --hour-h: 52px;
 
-  /* The dim inner frame is .card-in::before at inset 5px with a 1px border, so
-     it occupies 5-6px in from the panel edge. A scroller must stop at 6px to
-     sit inside it. Both numbers are derived from that one, so changing the
-     frame's inset means changing these. */
-  --frame-inset: 6px;
+  /* Clearance a scroller needs to sit inside the panel's own furniture. Two
+     things to clear, not one: the dim inner frame (.card-in::before, inset 5px
+     with a 1px border, so 5-6px in) and the corner brackets (.card-in::after,
+     inset 7px). 8px clears both with a pixel to spare. Derived from those two
+     insets — move either and this moves with it. */
+  --frame-inset: 8px;
   --list-fade: 16px;
 }
 
@@ -1175,7 +1176,13 @@ button:focus-visible,
 .news-list,
 .week-list,
 .mail-list {
-  margin-bottom: var(--frame-inset);
+  /* Inset on three sides, not just the bottom. The scrollbar lives at the
+     scroller's right edge, so a list spanning the full panel puts a 9px bright
+     thumb on top of the corner bracket and outside the frame line — visible in
+     the headless capture, and the same overshoot as the bottom. Top stays flush
+     because the card head sits directly above with its own border; a gap there
+     would detach the list from its heading. */
+  margin: 0 var(--frame-inset) var(--frame-inset);
   padding-bottom: var(--list-fade);
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--list-fade)), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - var(--list-fade)), transparent);

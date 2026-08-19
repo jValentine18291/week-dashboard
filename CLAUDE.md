@@ -232,6 +232,28 @@ collapse it back into one element with a `border`.
 `.card-in::before` is the dim inset frame, `.card-in::after` the corner
 brackets. Both pseudo-elements are taken — anything else needs real markup.
 
+**The inset frame paints over panel content, so scrollers have to stop short of
+it.** It sits at `inset: 5px` with a 1px border, occupying 5–6px in from the
+edge at `z-index: 2`. A scroll container filling `.card-in` therefore runs 5px
+*past* it, and whichever row lands at the bottom is guillotined mid-height with
+the cut outside the frame rather than inside it — measured on News, 25.6px of a
+50.8px story left showing, crossed by the frame line. `.news-list`,
+`.week-list` and `.mail-list` share one rule that fixes it, and both halves are
+load-bearing: `margin-bottom: var(--frame-inset)` pulls the scroll *viewport*
+inside the frame, which padding cannot do because padding does not move a
+scroller's viewport; a bottom `mask-image` then dissolves a partly-scrolled row
+instead of slicing it. `padding-bottom` must stay equal to `--list-fade` — at
+full scroll that padding is what occupies the fade zone, so the last row stays
+crisp instead of dimming for no reason. `--frame-inset` is derived from the
+frame's own inset, so moving one means moving the other.
+
+The rule is grouped across all three lists because the overshoot is structural
+to the card construction, not a News bug; News is only the panel with enough
+rows to make it visible. Verified by measuring each list's bottom against
+`.card-in`'s bottom minus 6 — it must be `<= 0`, and it was `+5` before. The
+change costs the calendar nothing: chips per day and `.card-calendar .card-in`
+height are byte-identical with the rule applied and forced off.
+
 Type: **Orbitron** for headings and system labels only, **Rajdhani** for body
 and data. Do not set Orbitron on small text; it is unreadable below ~12px.
 

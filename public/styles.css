@@ -38,6 +38,13 @@
   --gap: 12px;
   --gutter: 52px;
   --hour-h: 52px;
+
+  /* The dim inner frame is .card-in::before at inset 5px with a 1px border, so
+     it occupies 5-6px in from the panel edge. A scroller must stop at 6px to
+     sit inside it. Both numbers are derived from that one, so changing the
+     frame's inset means changing these. */
+  --frame-inset: 6px;
+  --list-fade: 16px;
 }
 
 * { box-sizing: border-box; }
@@ -1143,6 +1150,35 @@ button:focus-visible,
   min-height: 0;
   overflow-y: auto;
   padding: 0 0 2px;
+}
+
+/* Every card list scrolls all the way to the panel edge, which is 5px past the
+   dim inner frame (.card-in::before) — and that frame paints over the content
+   at z-index 2. So whichever row lands at the bottom is guillotined mid-height
+   and the cut sits outside the frame instead of inside it. Measured on News:
+   25.6px of a 50.8px story left showing, crossing the frame line.
+
+   Two parts, and both are load-bearing. `margin-bottom` pulls the scroll
+   viewport inside the frame, so nothing paints across it at any scroll
+   position — insetting is what the frame problem actually needs, and padding
+   alone cannot do it because padding does not move a scroller's viewport.
+   The mask then dissolves a partly-scrolled row rather than slicing it, which
+   doubles as the signal that there is more below.
+
+   `padding-bottom` is what keeps the fade honest: scrolled to the end, that
+   padding is what occupies the fade zone, so the last story stays crisp
+   instead of dimming for no reason. It must stay equal to --list-fade.
+
+   Grouped because the overshoot is structural — all three lists sit in the
+   same card construction, and News is only the one with enough rows to make it
+   visible today. */
+.news-list,
+.week-list,
+.mail-list {
+  margin-bottom: var(--frame-inset);
+  padding-bottom: var(--list-fade);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--list-fade)), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--list-fade)), transparent);
 }
 
 .news-item {

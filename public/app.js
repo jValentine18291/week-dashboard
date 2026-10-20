@@ -4,7 +4,6 @@ const $ = (id) => document.getElementById(id);
 
 let TZ = 'Asia/Singapore';
 let PAYLOAD = null;
-let FILTER = 'all';
 
 // Month is the default view. Remembered so a window left open on a second
 // screen comes back the way it was left.
@@ -449,136 +448,137 @@ function wireEventDetails() {
   });
 }
 
-// ---------- this week ----------
+// ---------- market watch ----------
 
-function weekItems() {
-  const tasks = (PAYLOAD.tasks.data || []).map((t) => ({
-    kind: 'task',
-    id: t.id,
-    title: t.title,
-    when: t.due,
-    done: t.done,
-    priority: t.priority,
-    status: t.status,
-    areas: t.areas,
-    url: t.url,
-  }));
+// Sparkline geometry in viewBox units. The SVG scales to whatever box the row
+// gives it, so these are proportions rather than pixels.
+const SPARK_W = 100;
+const SPARK_H = 30;
 
-  // Always the payload's own week and events, never the anchored frame: this
-  // panel and its progress bar are deliberately weekly, and stepping the
-  // Calendar page to March must not change what "This Week" means.
-  const events = eventsOn(PAYLOAD.week.days, PAYLOAD.calendar.data).map((e) => ({
-    kind: 'event',
-    id: e.id,
-    title: e.title,
-    when: e.start,
-    done: false,
-    allDay: e.allDay,
-    location: e.location,
-  }));
-
-  return [...tasks, ...events].sort((a, b) => new Date(a.when) - new Date(b.when));
+// A price is not a count: 81893.13 wants thousands separators and no decimals,
+// 295.78 wants two. One formatter for both would make Bitcoin unreadable or
+// the ETFs falsely precise.
+function priceText(value, currency) {
+  if (!Number.isFinite(value)) return '—';
+  const big = Math.abs(value) >= 1000;
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: big ? 0 : 2,
+      maximumFractionDigits: big ? 0 : 2,
+    }).format(value);
+  } catch (e) {
+    return value.toFixed(big ? 0 : 2);
+  }
 }
 
-// Events carry no pill: the round marker already distinguishes them from tasks,
-// and the right-hand column is more useful showing when the thing happens.
-function pillFor(item) {
-  if (item.kind === 'event') return '';
-  if (item.done) return '<span class="pill pill-done">Done</span>';
-  const p = (item.priority || '').toLowerCase();
-  if (p.startsWith('high')) return '<span class="pill pill-high">High</span>';
-  if (p.startsWith('med')) return '<span class="pill pill-medium">Medium</span>';
-  if (p.startsWith('low')) return '<span class="pill pill-low">Low</span>';
-  return '';
+function pctText(value) {
+  if (!Number.isFinite(value)) return '—';
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 }
 
-function renderThisWeek() {
-  const all = weekItems();
-  const tasks = all.filter((i) => i.kind === 'task');
-  const events = all.filter((i) => i.kind === 'event');
+function trendClass(value) {
+  if (!Number.isFinite(value) || value === 0) return 'is-flat';
+  return value > 0 ? 'is-up' : 'is-down';
+}
 
-  $('n-all').textContent = all.length;
-  $('n-task').textContent = tasks.length;
-  $('n-event').textContent = events.length;
+// Normalised into the viewBox. A flat series would divide by zero, so it is
+// drawn down the middle instead — a straight line is the honest picture of a
+// price that has not moved.
+function sparkPoints(series) {
+  if (!series || series.length < 2) return '';
+  const min = Math.min(...series);
+  const max = Math.max(...series);
+  const span = max - min;
+  const step = SPARK_W / (series.length - 1);
+  return series
+    .map((v, i) => {
+      const y = span === 0 ? SPARK_H / 2 : SPARK_H - ((v - min) / span) * SPARK_H;
+      return `${(i * step).toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(' ');
+}
 
-  const doneCount = tasks.filter((t) => t.done).length;
-  const pct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
-  $('progress-fill').style.width = `${pct}%`;
-  $('progress-pct').textContent = `${pct}%`;
-
-  const shown = FILTER === 'all' ? all : all.filter((i) => i.kind === FILTER);
-  const el = $('week-list');
-  const todayKey = dayKey(PAYLOAD.week.today);
-
-  if (!shown.length) {
-    el.innerHTML = '<p class="empty">Nothing here this week.</p>';
-    showError('tasks-error', PAYLOAD.tasks.error);
-    return;
+function marketRow(q) {
+  if (q.error) {
+    return `<div class="mk-row is-error">
+      <div class="mk-head"><span class="mk-sym">${escapeHtml(q.symbol)}</span></div>
+      <p class="mk-note">No data for this symbol. Check MARKET_SYMBOLS.</p>
+    </div>`;
   }
 
-  el.innerHTML = shown
-    .map((item) => {
-      const d = new Date(item.when);
-      const overdue = item.kind === 'task' && !item.done && dayKey(item.when) < todayKey;
-      const date = fmt(d, { weekday: 'short', day: 'numeric', month: 'short' });
+  // Two directions, because two different things are being described. The pill
+  // is today's move; the chart is the month. Colouring the chart by the day
+  // gave QQQM a green line that visibly fell — the month was -3.1% while the
+  // day was +1.2% — so each is tinted by the number it actually depicts.
+  const dayDir = trendClass(q.changePct);
+  const trendDir = trendClass(q.periodChangePct);
+  const points = sparkPoints(q.series);
+  // Each row owns its gradient id: two <linearGradient> elements sharing an id
+  // in one document means the second is ignored and both rows take the first
+  // one's colour, which would show a falling symbol in green.
+  const gid = `mkg-${q.symbol.replace(/[^A-Za-z0-9]/g, '')}`;
 
-      // Second line qualifies the date rather than repeating it: a time for a
-      // timed event, why the date matters for a task. Blank once a task is
-      // done, since its pill already says so.
-      const note = overdue ? 'Overdue'
-        : item.kind === 'event' ? (item.allDay ? 'All day' : clockOf(item.when))
-        : item.done ? ''
-        : 'Due';
+  const spark = points
+    ? `<svg class="mk-spark ${trendDir}" viewBox="0 0 ${SPARK_W} ${SPARK_H}"
+            preserveAspectRatio="none" aria-hidden="true">
+         <defs>
+           <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+             <stop offset="0%" stop-color="currentColor" stop-opacity=".28"/>
+             <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+           </linearGradient>
+         </defs>
+         <polygon points="0,${SPARK_H} ${points} ${SPARK_W},${SPARK_H}" fill="url(#${gid})"/>
+         <polyline points="${points}" fill="none" stroke="currentColor"
+                   stroke-width="1.4" vector-effect="non-scaling-stroke"
+                   stroke-linejoin="round" stroke-linecap="round"/>
+       </svg>`
+    : '<p class="mk-note">No history available.</p>';
 
-      return `<button class="wk-item ${item.done ? 'is-done' : ''}" type="button"
-                data-kind="${item.kind}" data-id="${escapeHtml(item.id)}" aria-expanded="false">
-        <span class="box ${item.kind === 'event' ? 'is-event' : ''}"></span>
-        <span class="wk-main">
-          <span class="wk-title">${escapeHtml(item.title)}</span>
-        </span>
-        ${pillFor(item)}
-        <span class="wk-when ${overdue ? 'is-overdue' : ''}">
-          <span class="wk-date">${escapeHtml(date)}</span>
-          ${note ? `<span class="wk-note">${escapeHtml(note)}</span>` : ''}
-        </span>
-      </button>`;
-    })
-    .join('');
+  const range = Number.isFinite(q.low) && Number.isFinite(q.high)
+    ? `${priceText(q.low, q.currency)} – ${priceText(q.high, q.currency)}`
+    : '—';
 
-  wireWeekDetails(shown);
-  showError('tasks-error', PAYLOAD.tasks.error);
+  // US sessions close mid-afternoon Singapore time, so a quote hours old is
+  // normal. Saying when it was taken is what stops a motionless number reading
+  // as a broken feed.
+  const asOf = q.quotedAt
+    ? fmt(new Date(q.quotedAt), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : '';
+
+  return `<div class="mk-row">
+    <div class="mk-head">
+      <span class="mk-sym">${escapeHtml(q.symbol)}</span>
+      <span class="mk-name">${escapeHtml(q.name || '')}</span>
+      ${q.stale ? '<span class="mk-stale" title="Showing the last good quote">STALE</span>' : ''}
+    </div>
+    <div class="mk-quote">
+      <span class="mk-price">${escapeHtml(priceText(q.price, q.currency))}</span>
+      <span class="mk-chg ${dayDir}">${escapeHtml(pctText(q.changePct))}</span>
+    </div>
+    ${spark}
+    <div class="mk-foot">
+      <span class="mk-stat"><b>1M</b> <span class="${trendClass(q.periodChangePct)}">${escapeHtml(pctText(q.periodChangePct))}</span></span>
+      <span class="mk-stat"><b>Range</b> ${escapeHtml(range)}</span>
+      ${asOf ? `<span class="mk-asof">${escapeHtml(asOf)}</span>` : ''}
+    </div>
+  </div>`;
 }
 
-function wireWeekDetails(items) {
-  document.querySelectorAll('.wk-item').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const open = btn.getAttribute('aria-expanded') === 'true';
-      const next = btn.nextElementSibling;
-      if (open && next && next.classList.contains('wk-detail')) {
-        next.remove();
-        btn.setAttribute('aria-expanded', 'false');
-        return;
-      }
-      const item = items.find((i) => i.id === btn.dataset.id && i.kind === btn.dataset.kind);
-      if (!item) return;
+function renderMarket() {
+  const quotes = PAYLOAD.markets.data || [];
+  const el = $('market');
 
-      const lines = [];
-      if (item.kind === 'task') {
-        if (item.status) lines.push(`<p>Status: ${escapeHtml(item.status)}</p>`);
-        if (item.areas && item.areas.length) lines.push(`<p>Area: ${escapeHtml(item.areas.join(', '))}</p>`);
-        if (item.url) lines.push(`<p><a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">Open in Notion</a></p>`);
-      } else {
-        if (item.location) lines.push(`<p>${escapeHtml(item.location)}</p>`);
-        lines.push(`<p>${escapeHtml(item.allDay ? 'All day' : clockOf(item.when))}</p>`);
-      }
+  const live = quotes.filter((q) => !q.error).length;
+  $('market-meta').textContent = live ? `${live} tracked` : '';
 
-      const div = document.createElement('div');
-      div.className = 'wk-detail';
-      div.innerHTML = lines.join('') || '<p>No further details.</p>';
-      btn.after(div);
-      btn.setAttribute('aria-expanded', 'true');
-    });
-  });
+  el.innerHTML = quotes.length
+    ? quotes.map(marketRow).join('')
+    : '<p class="empty">No symbols configured.</p>';
+
+  showError('market-error', PAYLOAD.markets.error);
 }
 
 // ---------- news ----------
@@ -801,7 +801,7 @@ function setPage(next) {
   const dash = $('page-dashboard');
   const cal = document.querySelector('.card-calendar');
   const news = document.querySelector('.card-news');
-  const weekCard = document.querySelector('.card-week');
+  const marketCard = document.querySelector('.card-market');
 
   dash.hidden = PAGE !== 'dashboard';
   $('page-calendar').hidden = PAGE !== 'calendar';
@@ -812,7 +812,7 @@ function setPage(next) {
 
   // Unhide before moving: the month grid measures its own box, so it has to be
   // in a laid-out container by the time renderCalendar runs below.
-  place(cal, PAGE === 'calendar' ? $('page-calendar') : dash, weekCard);
+  place(cal, PAGE === 'calendar' ? $('page-calendar') : dash, marketCard);
   place(news, PAGE === 'news' ? $('page-news') : dash, null);
 
   cal.classList.toggle('is-full', PAGE === 'calendar');
@@ -968,7 +968,7 @@ async function load(force = false) {
   if (boot) {
     boot.progress(70);
     boot.module('calendar', !PAYLOAD.calendar.error);
-    boot.module('tasks', !PAYLOAD.tasks.error);
+    boot.module('market', !PAYLOAD.markets.error);
     boot.module('news', !PAYLOAD.news.error);
     // Only report mail if it is actually configured — a tick for a subsystem
     // that is switched off would be a lie. Unconfigured, it stays standby.
@@ -986,7 +986,7 @@ async function load(force = false) {
   $('app').hidden = false;
 
   renderHeader();
-  renderThisWeek();
+  renderMarket();
   // Places the cards for whichever page is showing, then renders News and —
   // last on purpose — the calendar. The month grid measures its own box to
   // decide how many chips fit in a day cell, so the panels that share the
@@ -1088,14 +1088,6 @@ new ResizeObserver(() => {
   if (!$('mon-grid').clientHeight) return;
   if (chipCapacity() !== LAST_CAPACITY) renderCalendar();
 }).observe($('mon-grid'));
-
-$('filters').addEventListener('click', (e) => {
-  const chip = e.target.closest('.chip');
-  if (!chip) return;
-  FILTER = chip.dataset.filter;
-  document.querySelectorAll('.chip').forEach((c) => c.classList.toggle('is-active', c === chip));
-  renderThisWeek();
-});
 
 // Keep a window left open on a second screen current.
 setInterval(() => load(true), 5 * 60 * 1000);

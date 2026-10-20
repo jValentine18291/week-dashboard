@@ -11,10 +11,10 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 
 const { fetchCalendarEvents } = require('./lib/calendar');
-const { fetchTasks, fetchNotes } = require('./lib/notion');
 const { streamChat, DEFAULT_BASE_URL } = require('./lib/chat');
 const { fetchNews } = require('./lib/news');
 const { fetchMail, fetchBody } = require('./lib/gmail');
+const { fetchMarkets } = require('./lib/markets');
 const week = require('./lib/week');
 
 const app = express();
@@ -24,19 +24,11 @@ const COOKIE_SECRET = process.env.COOKIE_SECRET || 'change-me-in-env';
 const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || '';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-const notionConfig = {
-  token: process.env.NOTION_TOKEN,
-  tasksDataSourceId: process.env.NOTION_TASKS_DATA_SOURCE_ID,
-  notesDataSourceId: process.env.NOTION_NOTES_DATA_SOURCE_ID,
-  dueProperty: process.env.NOTION_DUE_PROPERTY || 'Due',
-  statusProperty: process.env.NOTION_STATUS_PROPERTY || 'Status',
-  areaProperty: process.env.NOTION_AREA_PROPERTY || 'Area',
-  priorityProperty: process.env.NOTION_PRIORITY_PROPERTY || 'Priority',
-  doneValues: (process.env.NOTION_DONE_VALUES || 'Done,Complete,Completed')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean),
-};
+// Notion is no longer read by anything. Notes became News and Tasks became
+// Market Watch, both at the user's request, so the config object that fed them
+// is gone rather than left sitting unused. lib/notion.js is untouched and still
+// exports fetchTasks and fetchNotes; restoring either panel means restoring
+// this block too. The NOTION_* variables can stay in .env harmlessly.
 
 // The chat relay is a separate concern from the dashboard: it is never given
 // calendar, task or note data. See lib/chat.js.
@@ -49,6 +41,15 @@ const newsFeeds = (process.env.NEWS_FEEDS || '')
 
 // Gmail, read-only and metadata-only. Blank refresh token disables the panel
 // entirely; the rest of the dashboard is unaffected.
+// Comma-separated, same convention as NEWS_FEEDS. Defaulted rather than
+// required: the user named these three, and a dashboard that needs an env var
+// set before it will show anything is a dashboard that looks broken on first
+// run. Yahoo's own symbology — BTC-USD, not a remapped exchange pair.
+const marketSymbols = (process.env.MARKET_SYMBOLS || 'QQQM,BTC-USD,SOXX')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const MAIL_LIMIT = Number(process.env.GMAIL_LIMIT || 8);
 const gmailConfig = {
   clientId: process.env.GMAIL_CLIENT_ID,
@@ -234,16 +235,16 @@ async function buildPayload() {
   // once lets the client switch between month and week views without another
   // round trip; the week view just filters the same array down.
   //
-  // Tasks stay on the week deliberately: the "This Week" panel and its progress
-  // bar measure the current week, not the month the calendar happens to show.
   // Each source is settled independently: a broken calendar feed should not
-  // take the tasks panel down with it.
-  // Notes is deliberately absent: the panel was replaced by News at the user's
-  // request, so fetching it would be a Notion call nobody reads. lib/notion.js
-  // still exports fetchNotes — see CLAUDE.md for how to bring the panel back.
-  const [events, tasks, news, mail] = await Promise.allSettled([
+  // take the market panel down with it.
+  //
+  // Neither Notion reader is called any more. Notes was replaced by News and
+  // Tasks by Market Watch, both at the user's request. lib/notion.js still
+  // exports fetchTasks and fetchNotes untouched — see CLAUDE.md for what
+  // bringing either panel back involves.
+  const [events, markets, news, mail] = await Promise.allSettled([
     monthCalendar(now),
-    fetchTasks(notionConfig, week.toLocalISODate(week.endOfWeek(now))),
+    fetchMarkets(marketSymbols),
     fetchNews(newsFeeds, NEWS_LIMIT),
     fetchMail(gmailConfig, MAIL_LIMIT),
   ]);
@@ -260,7 +261,7 @@ async function buildPayload() {
     week: frames.week,
     month: frames.month,
     calendar: unwrap(events, 'Calendar'),
-    tasks: unwrap(tasks, 'Tasks'),
+    markets: unwrap(markets, 'Markets'),
     news: unwrap(news, 'News'),
     // Shaped as an object rather than a list, so unwrap's [] default would be
     // wrong here — give it its own empty shape.
@@ -413,7 +414,7 @@ app.get('/healthz', (req, res) => {
   const parts = [
     sha ? `ok ${sha}` : 'ok',
     `calendar=${process.env.GOOGLE_CALENDAR_ICS_URL ? 'set' : 'unset'}`,
-    `notion=${process.env.NOTION_TOKEN ? 'set' : 'unset'}`,
+    `markets=${marketSymbols.length}`,
     `chat=${chatConfig.apiKey ? 'set' : 'unset'}`,
     `chat_host=${chatConfig.apiKey ? host : '-'}`,
     `chat_model=${chatConfig.apiKey ? chatConfig.model : '-'}`,

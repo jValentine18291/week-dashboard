@@ -164,34 +164,26 @@
       </div>
     </section>
 
-    <section class="card card-week" aria-labelledby="h-week">
+    <section class="card card-market" aria-labelledby="h-market">
       <div class="card-in">
       <span class="card-seam" aria-hidden="true"></span>
       <div class="card-head">
         <div class="card-head-left">
-          <span class="card-icon icon-week" aria-hidden="true">
+          <span class="card-icon icon-market" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                  stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3.5 7.5l2 2 3.5-3.5"></path>
-              <path d="M3.5 17.5l2 2 3.5-3.5"></path>
-              <path d="M13 7h7.5M13 18h7.5"></path>
+              <path d="M3 17l5-6 4 4 5-8"></path>
+              <path d="M17 7h4v4"></path>
             </svg>
           </span>
-          <h2 id="h-week" class="card-title">This Week</h2>
+          <h2 id="h-market" class="card-title">Market Watch</h2>
         </div>
-        <div class="progress-wrap">
-          <span class="progress-label">Progress</span>
-          <span class="progress-track"><span id="progress-fill" class="progress-fill"></span></span>
-          <span id="progress-pct" class="progress-pct">0%</span>
+        <div class="card-head-right">
+          <span id="market-meta" class="card-meta"></span>
         </div>
       </div>
-      <div class="filters" id="filters" role="tablist">
-        <button class="chip is-active" data-filter="all" role="tab" type="button">All <span class="chip-n" id="n-all">0</span></button>
-        <button class="chip" data-filter="task" role="tab" type="button">Tasks <span class="chip-n" id="n-task">0</span></button>
-        <button class="chip" data-filter="event" role="tab" type="button">Events <span class="chip-n" id="n-event">0</span></button>
-      </div>
-      <div id="week-list" class="week-list"></div>
-      <p id="tasks-error" class="card-error" hidden></p>
+      <div id="market" class="market-list"></div>
+      <p id="market-error" class="card-error" hidden></p>
       </div>
     </section>
 

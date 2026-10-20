@@ -31,12 +31,10 @@ window.Boot = (function () {
   var MODULES = [
     { id: 'calendar', col: 'l', name: 'CALENDAR SYNC', desc: 'Google Calendar feed', colour: '#4cc3ff',
       icon: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4' },
-    { id: 'tasks', col: 'l', name: 'TASK ENGINE', desc: 'Weekly tasks & priorities', colour: '#4cc3ff',
-      icon: 'M3.5 7.5l2 2 3.5-3.5M3.5 17.5l2 2 3.5-3.5M13 7h7.5M13 18h7.5' },
     { id: 'news', col: 'l', name: 'NEWS STREAM', desc: 'RSS intelligence feeds', colour: '#4cc3ff',
       icon: 'M12 3a9 9 0 100 18 9 9 0 000-18zM3 12h18M12 3a15 15 0 010 18a15 15 0 010-18' },
-    { id: 'market', col: 'r', name: 'MARKET FEED', desc: 'Not provisioned', colour: '#a78bfa',
-      icon: 'M3 17l5-6 4 4 5-8 4 5', standby: true },
+    { id: 'market', col: 'r', name: 'MARKET FEED', desc: 'Quotes & 1M history', colour: '#a78bfa',
+      icon: 'M3 17l5-6 4 4 5-8 4 5' },
     // Starts in standby and is promoted to a real module by app.js only when a
     // refresh token is actually configured.
     { id: 'mail', col: 'r', name: 'MAIL RELAY', desc: 'Gmail headers, metadata only', colour: '#a78bfa',

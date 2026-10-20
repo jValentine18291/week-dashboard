@@ -229,7 +229,6 @@ button { font-family: inherit; }
 
 #password:focus-visible,
 button:focus-visible,
-.wk-item:focus-visible,
 .ev:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
@@ -319,15 +318,15 @@ button:focus-visible,
   grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   grid-template-areas:
-    "cal   week"
-    "news  week";
+    "cal   market"
+    "news  market";
   gap: var(--gap);
   padding: 0 20px 16px;
   min-height: 0;
 }
 
 .card-calendar { grid-area: cal; }
-.card-week { grid-area: week; }
+.card-market { grid-area: market; }
 .card-news { grid-area: news; }
 
 /* Capped on purpose, and only inside the dashboard grid. This row is `auto`, so
@@ -499,7 +498,7 @@ button:focus-visible,
 /* One tint per panel, so the three sections are told apart at a glance rather
    than by reading. Values are reused from the pill palette, not invented. */
 .icon-cal   { background: rgba(56, 189, 248, 0.14); color: #4cc9f5; box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.3); }
-.icon-week  { background: rgba(167, 139, 250, 0.14); color: #b39bff; box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.3); }
+.icon-market  { background: rgba(167, 139, 250, 0.14); color: #b39bff; box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.3); }
 .icon-news  { background: rgba(167, 139, 250, 0.14); color: #b39bff; box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.3); }
 
 .card-error {
@@ -830,171 +829,136 @@ button:focus-visible,
 
 .cal-empty { padding: 40px 18px; text-align: center; color: var(--ink-3); font-size: 13px; }
 
-/* ---------- this week ---------- */
+/* ---------- market watch ---------- */
 
-.progress-wrap { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.progress-label { font-size: 11px; color: var(--ink-2); }
-
-.progress-track {
-  width: 74px; height: 5px;
-  background: rgba(255, 255, 255, 0.07);
-  border-radius: 3px;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px var(--border);
-}
-
-.progress-fill {
-  display: block; height: 100%; width: 0%;
-  background: linear-gradient(90deg, var(--blue-deep), var(--blue));
-  border-radius: 3px;
-  box-shadow: var(--glow-edge);
-  transition: width 700ms cubic-bezier(.2, .7, .3, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.progress-fill::after {
-  content: '';
-  position: absolute;
-  top: 0; bottom: 0; left: 0;
-  width: 45%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-  animation: shimmer 2.8s linear infinite;
-}
-.progress-pct { font-size: 12px; font-weight: 600; color: var(--ink); min-width: 30px; text-align: right; }
-
-.filters { display: flex; gap: 6px; padding: 0 14px 9px; flex: 0 0 auto; }
-
-.chip {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ink-2);
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 4px 11px;
-  cursor: pointer;
-}
-
-.chip:hover { border-color: var(--blue); color: var(--ink); }
-.chip.is-active {
-  background: var(--blue-soft);
-  border-color: rgba(34, 211, 238, 0.45);
-  color: var(--blue);
-  font-weight: 700;
-}
-.chip-n { opacity: 0.75; margin-left: 3px; }
-
-/* Still scrolls internally — a full week of merged tasks and events will always
-   be able to outrun the column. It scrolls inside the card so the page can't. */
-.week-list {
-  border-top: 1px solid var(--hair);
+/* Three symbols in a column that spans both grid rows, so each row gets real
+   height rather than being squeezed into a list. The panel replaced This Week
+   at the user's request; see CLAUDE.md on what reinstating tasks would mean. */
+.market-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-}
-
-.wk-item {
   display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  width: 100%;
-  padding: 8px 14px;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--hair);
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
+  flex-direction: column;
 }
 
-.wk-item:last-child { border-bottom: none; }
-.wk-item:hover { background: rgba(34, 211, 238, 0.06); }
-
-.box {
-  width: 16px; height: 16px;
-  flex: 0 0 16px;
-  margin-top: 2px;
-  border: 1.5px solid rgba(120, 160, 200, 0.5);
-  border-radius: 4px;
-  position: relative;
-  background: rgba(0, 0, 0, 0.35);
+/* Rows share the panel's height rather than stacking from the top. This panel
+   spans both grid rows, so three symbols left half of it empty — and the space
+   is better spent on the sparkline than on padding. The min-height is what
+   keeps that honest: add enough symbols and rows stop growing, hit the floor
+   and the list scrolls instead of compressing into unreadable slivers. */
+.mk-row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 16px 13px;
+  border-top: 1px solid var(--hair);
+  flex: 1 1 auto;
+  min-height: 124px;
 }
 
-.wk-item.is-done .box {
-  background: var(--blue);
-  border-color: var(--blue);
-  box-shadow: var(--glow-edge);
-}
+.mk-row:first-child { border-top: none; }
 
-.wk-item.is-done .box::after {
-  content: '';
-  position: absolute;
-  left: 4.5px; top: 1.5px;
-  width: 4px; height: 8px;
-  border: solid #04121b;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
+.mk-head { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 
-.box.is-event { border-radius: 50%; border-style: solid; }
-
-.wk-main { flex: 1; min-width: 0; }
-
-.wk-title { font-size: 13.5px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
-.wk-item.is-done .wk-title { color: var(--ink-2); }
-
-/* Right-aligned so dates form a scannable column down the list. */
-.wk-when {
+/* Orbitron is the system-label face and the ticker is exactly that. 12.5px
+   clears the ~12px floor the type rule sets for it. */
+.mk-sym {
+  font-family: 'Orbitron', ui-sans-serif, system-ui, sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--ink);
   flex: 0 0 auto;
-  margin-top: 1px;
-  text-align: right;
-  white-space: nowrap;
 }
 
-.wk-date {
-  display: block;
-  font-size: 12px;
+.mk-name {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.mk-stale {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  color: var(--warn);
+  border: 1px solid rgba(255, 176, 32, .35);
+  border-radius: 3px;
+  padding: 0 4px;
+  flex: 0 0 auto;
+}
+
+.mk-quote { display: flex; align-items: baseline; gap: 10px; }
+
+/* Tabular figures so the three prices line up their decimal columns and a
+   ticking last digit does not shuffle the row. */
+.mk-price {
+  font-size: 23px;
   font-weight: 600;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
 }
 
-.wk-note { display: block; font-size: 10.5px; color: var(--ink-3); margin-top: 1px; }
-
-.wk-item.is-done .wk-date { color: var(--ink-2); font-weight: 500; }
-.wk-when.is-overdue .wk-date,
-.wk-when.is-overdue .wk-note { color: var(--red); }
-
-.pill {
-  flex: 0 0 auto;
-  margin-top: 1px;
-  font-size: 11px;
+.mk-chg {
+  font-size: 13px;
   font-weight: 700;
-  border-radius: 5px;
-  padding: 2px 8px;
-  white-space: nowrap;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 7px;
+  border-radius: 3px;
 }
 
-.pill-high { background: rgba(251, 90, 118, 0.14); color: #ff8098; box-shadow: inset 0 0 0 1px rgba(251, 90, 118, 0.4); }
-.pill-medium { background: rgba(251, 191, 36, 0.14); color: #ffc94d; box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.4); }
-.pill-low { background: rgba(56, 189, 248, 0.14); color: #4cc9f5; box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.4); }
-.pill-done { background: rgba(52, 211, 153, 0.14); color: #45e0ab; box-shadow: inset 0 0 0 1px rgba(52, 211, 153, 0.4); }
-.pill-event { background: rgba(167, 139, 250, 0.14); color: #b39bff; box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.4); }
+/* Colour is doubled by the sign (+/-) and the sparkline's direction, so this
+   does not rely on red/green alone to carry the meaning. */
+.is-up   { color: var(--ok); }
+.is-down { color: var(--red); }
+.is-flat { color: var(--ink-2); }
 
-.wk-detail {
-  padding: 0 14px 10px 39px;
-  font-size: 12.5px;
-  color: var(--ink-2);
-  border-bottom: 1px solid var(--hair);
+.mk-chg.is-up   { background: rgba(52, 211, 153, .12); }
+.mk-chg.is-down { background: rgba(255, 107, 138, .12); }
+.mk-chg.is-flat { background: rgba(138, 165, 200, .10); }
+
+/* Stroke colour comes from `currentColor`, which the direction class sets, so
+   the fill gradient tracks it without a second declaration. */
+/* preserveAspectRatio="none" on the SVG means it takes whatever box it is
+   given, so the chart grows with the row instead of sitting in a fixed strip. */
+.mk-spark {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 42px;
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 0 6px currentColor);
+  opacity: .9;
 }
 
-.wk-detail p { margin: 0 0 3px; }
-.wk-detail a { color: var(--blue); text-decoration: none; }
-.wk-detail a:hover { text-decoration: underline; }
+.mk-foot {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  flex-wrap: wrap;
+}
+
+.mk-stat b {
+  font-weight: 700;
+  letter-spacing: .1em;
+  font-size: 9px;
+  color: #4a6884;
+  margin-right: 3px;
+}
+
+.mk-asof { margin-left: auto; opacity: .8; }
+
+.mk-note { font-size: 11.5px; color: var(--ink-3); margin: 0; }
+.mk-row.is-error .mk-sym { color: var(--red); }
 
 /* ---------- scrollbars ---------- */
 
@@ -1198,7 +1162,7 @@ button:focus-visible,
    same card construction, and News is only the one with enough rows to make it
    visible today. */
 .news-list,
-.week-list,
+.market-list,
 .mail-list {
   /* Inset on three sides, not just the bottom. The scrollbar lives at the
      scroller's right edge, so a list spanning the full panel puts a 9px bright
@@ -1315,9 +1279,6 @@ button:focus-visible,
   50%      { box-shadow: 0 0 10px 1px rgba(76, 195, 255, .32); }
 }
 
-@keyframes shimmer {
-  from { transform: translateX(-120%); }
-  to   { transform: translateX(340%); }
 }
 
 @keyframes nowPulse {
@@ -1347,7 +1308,7 @@ button:focus-visible,
 
 .card { animation: riseIn 420ms cubic-bezier(.22,1,.36,1) backwards, busCharge 420ms ease-out backwards; }
 .card-calendar { animation-delay: 200ms, 200ms; }
-.card-week     { animation-delay: 280ms, 300ms; }
+.card-market     { animation-delay: 280ms, 300ms; }
 .card-news     { animation-delay: 420ms, 430ms; }
 
 /* ---------- boot handoff ---------- */
@@ -1411,7 +1372,7 @@ button:focus-visible,
 }
 
 /* Desynced so the three cards never fire together. */
-.card-week .card-seam::after { animation-delay: 3.1s; }
+.card-market .card-seam::after { animation-delay: 3.1s; }
 .card-news .card-seam::after { animation-delay: 6.2s; }
 
 /* The glint crosses in the first third of the cycle and rests for the rest.
@@ -1427,7 +1388,7 @@ button:focus-visible,
 /* Card icons breathe, staggered so the three cards don't inhale in unison.
    The emblem does its own breathing (rule above) and gets nothing extra. */
 .card-icon { animation: breathe 4.2s ease-in-out infinite; }
-.card-week .card-icon { animation-delay: 1.4s; }
+.card-market .card-icon { animation-delay: 1.4s; }
 .card-news .card-icon { animation-delay: 2.8s; }
 
 /* A breathing status dot reads as monitoring. Only on .ok — an error state
@@ -1457,7 +1418,7 @@ button:focus-visible,
    odd cycles is irregular enough without spending markup on per-corner
    control. */
 .card-calendar .card-in::after { animation: brGlint 11s ease-in-out 2.3s infinite; }
-.card-week     .card-in::after { animation: brGlint 13s ease-in-out 6.1s infinite; }
+.card-market     .card-in::after { animation: brGlint 13s ease-in-out 6.1s infinite; }
 .card-news     .card-in::after { animation: brGlint 17s ease-in-out 9.7s infinite; }
 .rail-in::after                { animation: brGlint 19s ease-in-out 13.4s infinite; }
 
@@ -1638,7 +1599,7 @@ button:focus-visible,
   .layout {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
-    grid-template-areas: "cal" "week" "news";
+    grid-template-areas: "cal" "market" "news";
   }
 
   /* Enough to keep the longest label — a week range — off the controls at this
@@ -1646,7 +1607,7 @@ button:focus-visible,
   .card-calendar #cal-range { font-size: 13px; letter-spacing: .05em; }
 
   .cal-month { min-height: 460px; }
-  .week-list { max-height: 420px; }
+  .market-list { max-height: 420px; }
 }
 
 /* Ambient motion is the kind of thing this setting exists for: nothing here is

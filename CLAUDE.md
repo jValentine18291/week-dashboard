@@ -39,8 +39,11 @@ tooling, pulling config from Railway rather than by hand, and current state.
   Settings, Log out — remain wrong for that reason: two of them (Goals, Files)
   are not features in any phase.
 
-  **Tasks is deliberately not a section.** The user was explicit: This Week is
-  a brief summary that belongs on the dashboard. Do not promote it to a page.
+  **Tasks is gone entirely**, panel and all, replaced by Market Watch in the
+  same grid slot at the user's request (October 2026). The older rule here said
+  This Week must stay a dashboard summary and never become a page; that rule is
+  moot, but its reasoning is not — a panel still earns the right column by being
+  glanceable, which is why Market Watch is three symbols and not a table.
 
   The Month and Week switches moved out of the rail and into the calendar card
   header, where a duplicate pair already lived. Refresh was removed earlier at
@@ -56,15 +59,20 @@ tooling, pulling config from Railway rather than by hand, and current state.
   fine. The guard must not key on `NODE_ENV` alone either: that deploy had
   `NODE_ENV` unset too, so a production-only check would have been disabled by
   the same missing configuration it exists to catch.
-- **Scope is calendar + tasks + news.** News was built at the user's request
-  and **replaced the Notes panel** — he asked for the swap and said he would
-  consider re-adding Notes later. Market Watch is still unbuilt and should not
-  be started until asked.
+- **Scope is calendar + news + markets.** Both Notion panels have been
+  replaced at the user's request: Notes became News, then This Week became
+  Market Watch. Nothing reads Notion any more, and `notionConfig` has been
+  removed from `server.js` rather than left sitting unused — but `lib/notion.js`
+  is untouched and still exports `fetchTasks` and `fetchNotes`.
 
-  Bringing Notes back is three steps, all still in place: `fetchNotes` in
-  `lib/notion.js` is untouched, add it back to the `Promise.allSettled` in
-  `buildPayload`, and give it a panel. The layout would need a third area —
-  the bottom row currently holds News alone.
+  Reinstating either panel is four steps now, not three: restore `notionConfig`
+  in `server.js`, add the reader back to the `Promise.allSettled` in
+  `buildPayload`, give it a panel, and find it a grid area. The layout has two
+  columns and three areas (`cal`, `news`, `market`) with no spare slot, so a
+  fourth panel means re-cutting the grid rather than filling a gap.
+
+  The `NOTION_*` variables can stay in `.env` and on Railway; nothing reads
+  them, and removing them would only make restoring a panel harder.
 
 ## Landmines
 
@@ -201,7 +209,8 @@ These are all load-bearing and all have cost real debugging time. Do not
 
 ```
 server.js            express, auth, /api/dashboard, /api/calendar
-lib/                 calendar.js, notion.js, week.js
+lib/                 calendar.js, notion.js, week.js, news.js, chat.js,
+                     gmail.js, markets.js
 public/index.html    single page: boot host, gate, rail, topbar, three panels
 public/styles.css    dashboard
 public/boot.css      boot sequence only
@@ -412,6 +421,54 @@ Things that are load-bearing, all measured against the live feeds:
 a ceiling the feed grows with its content and eats the calendar. Measured at
 1920×950: 176px keeps the month grid at 4 chips per day, 190px drops it to 3.
 
+## Market Watch
+
+`lib/markets.js` + the `markets` panel. Three symbols, defaulting to
+`QQQM,BTC-USD,SOXX` and overridable with `MARKET_SYMBOLS`. Read-only, like
+everything else here.
+
+**No API key, deliberately.** The phase-2 research in this file used to
+recommend Finnhub or Twelve Data; both were reconsidered and dropped on setup
+cost rather than capability. Finnhub needs crypto remapped to an exchange pair
+(`BINANCE:BTCUSDT`), Twelve Data's free tier is 800 calls/day against the ~864
+a dashboard left open all day would make, and both mean a key to paste into
+`.env` and Railway for a panel showing three numbers. Yahoo's chart endpoint is
+public, needs no account, and resolves all three symbols in the user's own
+notation. The cost is that it is unofficial and can change shape without
+notice — survivable because the panel settles independently and swapping
+providers means rewriting `quote()` and nothing else.
+
+Things that are load-bearing, all measured against the live endpoint:
+
+- **Take the day change from `meta.regularMarketChangePercent`. Never compute
+  it.** The two agree for the ETFs and disagree for Bitcoin, and the feed is
+  right: crypto's previous-day close can be *missing* from the daily series —
+  there was a `null` at 19 Oct 2026 — so computing from the array silently
+  measures against the day before that. It reported −0.16% where the real move
+  was −0.94%, which is the kind of wrong that looks completely plausible.
+- **`chartPreviousClose` is not the previous close.** It is the close before
+  the requested `range`, so it moves when `range` moves: 296.91 at `1mo`,
+  307.19 at `5d`, for the same instrument on the same day. A well-named field
+  answering a different question.
+- **Nulls in the closes array are filtered, not trusted positionally.** See
+  above — the gap is real and it is what breaks naive indexing.
+- **The sparkline is tinted by the period change, the pill by the day change.**
+  Each is coloured by the number it actually depicts. Tinting the chart by the
+  day gave QQQM a green line that visibly fell, because the day was +1.2% while
+  the month was −3.1%.
+- Quotes are cached for 60s in-module. That is politeness toward an endpoint
+  nobody is paying for, not performance.
+- Each symbol settles independently; a bad ticker renders in place as an error
+  row so a typo in `MARKET_SYMBOLS` is visible rather than silently absent.
+  Only an all-symbols failure throws.
+
+Rows use `flex: 1` with a `min-height` floor so three symbols fill a panel that
+spans both grid rows, while more symbols hit the floor and scroll instead of
+compressing. `preserveAspectRatio="none"` is what lets the SVG grow with its
+row. Each row's gradient carries its own id — two `<linearGradient>` elements
+sharing one id means the second is ignored and a falling symbol inherits the
+first one's colour.
+
 ## Assistant
 
 A chat drawer, `lib/chat.js` + `POST /api/chat` + `public/chat.{js,css}`. Added
@@ -615,12 +672,15 @@ console.log('clipped cells:', [...document.querySelectorAll('.mon-events')]
   .filter(e => e.scrollHeight > e.clientHeight + 1).length);            // must be 0
 ```
 
-Check both at 1920×1080 and at a smaller window. **No cell may name nothing** —
-that is the invariant, and it is directly measurable:
+Check both at 1920×1080 and at a smaller window. **No cell may claim events it
+does not name** — that is the invariant. An earlier version of this check
+counted every cell with no chips, which reads 14 on a real October because a
+day with nothing on it correctly shows nothing; it only passed against a mock
+that filled all 42 days. The predicate has to be the overflow badge:
 
 ```js
-console.log('cells naming nothing:', [...document.querySelectorAll('.mon-events')]
-  .filter(e => e.querySelectorAll('.mon-chip').length === 0).length);   // must be 0
+console.log('overflow but names nothing:', [...document.querySelectorAll('.mon-cell')]
+  .filter(c => c.querySelector('.mon-more') && !c.querySelector('.mon-chip')).length);  // must be 0
 ```
 
 It replaces an older rule that said a too-short cell must fall back to an
@@ -645,6 +705,22 @@ panel starts pushing the page taller. Last measured at 1920×1000 — no page
 scrolls, no clipped cells, seven events per day on the Calendar page against
 six on the dashboard.
 
+**The whole dashboard can be screenshotted, with real data.** The fail-closed
+auth rule is what makes it possible: with `DASHBOARD_PASSWORD` empty, a loopback
+caller is served without a login, so headless Chrome can load the real page.
+
+```bash
+DASHBOARD_PASSWORD= PORT=3101 node server.js &
+chrome --headless=new --no-sandbox --disable-gpu   --force-prefers-reduced-motion=reduce   --window-size=1920,1000 --virtual-time-budget=15000   --screenshot=out.png "http://127.0.0.1:3101/"
+```
+
+`--force-prefers-reduced-motion=reduce` is not cosmetic and the shot is blank
+without it: the entrance animations have `backwards` fill, they do not advance
+under virtual time, and every card sits frozen at `opacity: 0`. Reduced motion
+disables them, so the cards render at their resting state. Prefer this over the
+fixture for anything about layout — it needs no duplicated markup and cannot
+drift from what ships.
+
 For the month grid specifically, `verify-visual.html` renders three pinned cell
 heights (45/60/110px) and screenshots them. Capacity arithmetic is duplicated
 there by hand, so `CHIP_H`/`NUM_RESERVE` changes have to be copied across or
@@ -659,10 +735,6 @@ assert them rather than clicking through: for every day of several years,
 
 Facts already researched — do not re-derive:
 
-- **Market Watch (5 tickers).** Alpha Vantage free is now ~25 calls/day, too
-  tight. Use Finnhub (~60/min) or Twelve Data (~800/day). Yahoo Finance is
-  unreliable and IEX Cloud is deprecated. Free tiers give daily bars, so a
-  sparkline is ~30 daily closes, not an intraday curve.
 - **News.** Use RSS feeds, not a news API — NewsAPI's free tier is
   development-only. Many feeds carry no image, so a thumbnail fallback is
   required or the panel looks broken.

@@ -455,6 +455,21 @@ function wireEventDetails() {
 const SPARK_W = 100;
 const SPARK_H = 30;
 
+const MARKET_RANGES = ['1d', '1w', '1mo', '6mo', '1y'];
+const MARKET_DEFAULT_RANGE = '1mo';
+
+// Persisted like the calendar's month/week choice, and for the same reason: a
+// view you picked should survive a reload.
+let MARKET_RANGE = MARKET_RANGES.includes(localStorage.getItem('market-range'))
+  ? localStorage.getItem('market-range')
+  : MARKET_DEFAULT_RANGE;
+
+// What is on screen right now. At the default range this is the dashboard
+// payload; at any other it is whatever /api/markets returned. Keeping it
+// separate is what stops the five-minute refresh from yanking the user back to
+// 1M while they are reading the year.
+let MARKET_VIEW = null;
+
 // A price is not a count: 81893.13 wants thousands separators and no decimals,
 // 295.78 wants two. One formatter for both would make Bitcoin unreadable or
 // the ETFs falsely precise.
@@ -484,24 +499,44 @@ function trendClass(value) {
   return value > 0 ? 'is-up' : 'is-down';
 }
 
-// Normalised into the viewBox. A flat series would divide by zero, so it is
-// drawn down the middle instead — a straight line is the honest picture of a
-// price that has not moved.
+// The one place the value -> viewBox mapping is defined. The hover cursor reads
+// these same bounds back out, so the dot lands on the line rather than near it.
+function sparkBounds(series) {
+  const vals = series.map((p) => p.c);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  return { min, max, span: max - min };
+}
+
 function sparkPoints(series) {
   if (!series || series.length < 2) return '';
-  const min = Math.min(...series);
-  const max = Math.max(...series);
-  const span = max - min;
+  const { min, span } = sparkBounds(series);
   const step = SPARK_W / (series.length - 1);
   return series
-    .map((v, i) => {
-      const y = span === 0 ? SPARK_H / 2 : SPARK_H - ((v - min) / span) * SPARK_H;
+    .map((p, i) => {
+      // A flat series would divide by zero, so it is drawn down the middle —
+      // a straight line is the honest picture of a price that has not moved.
+      const y = span === 0 ? SPARK_H / 2 : SPARK_H - ((p.c - min) / span) * SPARK_H;
       return `${(i * step).toFixed(2)},${y.toFixed(2)}`;
     })
     .join(' ');
 }
 
-function marketRow(q) {
+// Daily bars want a date, intraday bars want a clock, and a year of dates wants
+// the year on it. The server says which shape the data is; the label follows.
+function pointLabel(point, q) {
+  const d = new Date(point.t);
+  if (q.intraday) {
+    return q.range === '1d'
+      ? fmt(d, { hour: '2-digit', minute: '2-digit' })
+      : fmt(d, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  }
+  return q.range === '1y'
+    ? fmt(d, { day: 'numeric', month: 'short', year: 'numeric' })
+    : fmt(d, { day: 'numeric', month: 'short' });
+}
+
+function marketRow(q, index) {
   if (q.error) {
     return `<div class="mk-row is-error">
       <div class="mk-head"><span class="mk-sym">${escapeHtml(q.symbol)}</span></div>
@@ -510,9 +545,9 @@ function marketRow(q) {
   }
 
   // Two directions, because two different things are being described. The pill
-  // is today's move; the chart is the month. Colouring the chart by the day
-  // gave QQQM a green line that visibly fell — the month was -3.1% while the
-  // day was +1.2% — so each is tinted by the number it actually depicts.
+  // is today's move; the chart is the selected range. Colouring the chart by
+  // the day gave QQQM a green line that visibly fell — the month was -3.1%
+  // while the day was +1.2% — so each is tinted by the number it depicts.
   const dayDir = trendClass(q.changePct);
   const trendDir = trendClass(q.periodChangePct);
   const points = sparkPoints(q.series);
@@ -521,23 +556,28 @@ function marketRow(q) {
   // one's colour, which would show a falling symbol in green.
   const gid = `mkg-${q.symbol.replace(/[^A-Za-z0-9]/g, '')}`;
 
-  const spark = points
-    ? `<svg class="mk-spark ${trendDir}" viewBox="0 0 ${SPARK_W} ${SPARK_H}"
-            preserveAspectRatio="none" aria-hidden="true">
-         <defs>
-           <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
-             <stop offset="0%" stop-color="currentColor" stop-opacity=".28"/>
-             <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
-           </linearGradient>
-         </defs>
-         <polygon points="0,${SPARK_H} ${points} ${SPARK_W},${SPARK_H}" fill="url(#${gid})"/>
-         <polyline points="${points}" fill="none" stroke="currentColor"
-                   stroke-width="1.4" vector-effect="non-scaling-stroke"
-                   stroke-linejoin="round" stroke-linecap="round"/>
-       </svg>`
+  const chart = points
+    ? `<div class="mk-chart ${trendDir}" data-i="${index}">
+         <svg class="mk-spark" viewBox="0 0 ${SPARK_W} ${SPARK_H}"
+              preserveAspectRatio="none" aria-hidden="true">
+           <defs>
+             <linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
+               <stop offset="0%" stop-color="currentColor" stop-opacity=".28"/>
+               <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+             </linearGradient>
+           </defs>
+           <polygon points="0,${SPARK_H} ${points} ${SPARK_W},${SPARK_H}" fill="url(#${gid})"/>
+           <polyline points="${points}" fill="none" stroke="currentColor"
+                     stroke-width="1.4" vector-effect="non-scaling-stroke"
+                     stroke-linejoin="round" stroke-linecap="round"/>
+         </svg>
+         <span class="mk-cline" hidden></span>
+         <span class="mk-cdot" hidden></span>
+         <div class="mk-tip" hidden></div>
+       </div>`
     : '<p class="mk-note">No history available.</p>';
 
-  const range = Number.isFinite(q.low) && Number.isFinite(q.high)
+  const span = Number.isFinite(q.low) && Number.isFinite(q.high)
     ? `${priceText(q.low, q.currency)} – ${priceText(q.high, q.currency)}`
     : '—';
 
@@ -558,27 +598,128 @@ function marketRow(q) {
       <span class="mk-price">${escapeHtml(priceText(q.price, q.currency))}</span>
       <span class="mk-chg ${dayDir}">${escapeHtml(pctText(q.changePct))}</span>
     </div>
-    ${spark}
+    ${chart}
     <div class="mk-foot">
-      <span class="mk-stat"><b>1M</b> <span class="${trendClass(q.periodChangePct)}">${escapeHtml(pctText(q.periodChangePct))}</span></span>
-      <span class="mk-stat"><b>Range</b> ${escapeHtml(range)}</span>
+      <span class="mk-stat"><b>${escapeHtml(q.rangeLabel || '')}</b> <span class="${trendClass(q.periodChangePct)}">${escapeHtml(pctText(q.periodChangePct))}</span></span>
+      <span class="mk-stat"><b>Range</b> ${escapeHtml(span)}</span>
       ${asOf ? `<span class="mk-asof">${escapeHtml(asOf)}</span>` : ''}
     </div>
   </div>`;
 }
 
+function markActiveRange() {
+  document.querySelectorAll('#market-range .vt').forEach((b) =>
+    b.classList.toggle('is-active', b.dataset.range === MARKET_RANGE));
+}
+
 function renderMarket() {
-  const quotes = PAYLOAD.markets.data || [];
+  const quotes = MARKET_VIEW || [];
   const el = $('market');
 
   const live = quotes.filter((q) => !q.error).length;
   $('market-meta').textContent = live ? `${live} tracked` : '';
+  markActiveRange();
 
   el.innerHTML = quotes.length
     ? quotes.map(marketRow).join('')
     : '<p class="empty">No symbols configured.</p>';
 
   showError('market-error', PAYLOAD.markets.error);
+}
+
+// Called after every payload load. At the default range the payload already
+// holds the data; at any other the user's choice is refetched, so a background
+// refresh does not silently drop them back to 1M.
+function syncMarket() {
+  if (MARKET_RANGE === MARKET_DEFAULT_RANGE) {
+    MARKET_VIEW = (PAYLOAD.markets && PAYLOAD.markets.data) || [];
+    renderMarket();
+    return;
+  }
+  loadMarketRange(MARKET_RANGE);
+}
+
+// Switching range refetches rather than reslicing: a year of daily bars is not
+// contained in a month of them. Fetched on demand for the same reason mail
+// bodies are — see the route in server.js.
+async function loadMarketRange(range) {
+  MARKET_RANGE = MARKET_RANGES.includes(range) ? range : MARKET_DEFAULT_RANGE;
+  localStorage.setItem('market-range', MARKET_RANGE);
+  markActiveRange();
+
+  // The default range is already in the dashboard payload, so asking the
+  // server for it again would be a round trip for data in hand.
+  if (MARKET_RANGE === MARKET_DEFAULT_RANGE && PAYLOAD && PAYLOAD.markets) {
+    MARKET_VIEW = PAYLOAD.markets.data || [];
+    renderMarket();
+    return;
+  }
+
+  $('market').classList.add('is-loading');
+  try {
+    const res = await fetch(`/api/markets?range=${encodeURIComponent(MARKET_RANGE)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const body = await res.json();
+    MARKET_VIEW = body.data || [];
+    renderMarket();
+  } catch (err) {
+    console.error('Market range failed:', err.message);
+    showError('market-error', 'Could not load that range.');
+  } finally {
+    $('market').classList.remove('is-loading');
+  }
+}
+
+// --- hover readout -------------------------------------------------------
+
+// The index comes from the pointer's position across the element's own box,
+// never from viewBox units: preserveAspectRatio="none" stretches the two axes
+// by different factors, so a coordinate that is correct in SVG space lands in
+// the wrong place on screen.
+function moveCursor(chart, clientX) {
+  const q = (MARKET_VIEW || [])[Number(chart.dataset.i)];
+  if (!q || !q.series || q.series.length < 2) return;
+
+  const rect = chart.getBoundingClientRect();
+  const n = q.series.length;
+  const frac = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+  const i = Math.round(frac * (n - 1));
+  const point = q.series[i];
+
+  const { min, span } = sparkBounds(q.series);
+  const x = (i / (n - 1)) * rect.width;
+  const y = span === 0 ? rect.height / 2 : (1 - (point.c - min) / span) * rect.height;
+
+  const line = chart.querySelector('.mk-cline');
+  const dot = chart.querySelector('.mk-cdot');
+  const tip = chart.querySelector('.mk-tip');
+
+  line.style.left = `${x}px`;
+  dot.style.left = `${x}px`;
+  dot.style.top = `${y}px`;
+
+  tip.innerHTML = `<b>${escapeHtml(priceText(point.c, q.currency))}</b>` +
+                  `<span>${escapeHtml(pointLabel(point, q))}</span>`;
+
+  // Unhidden before measuring: a hidden element has no offsetWidth, so
+  // clamping against it would put every tooltip half a pixel from the left.
+  line.hidden = false;
+  dot.hidden = false;
+  tip.hidden = false;
+
+  const half = tip.offsetWidth / 2;
+  tip.style.left = `${Math.min(rect.width - half, Math.max(half, x))}px`;
+
+  // Above the dot by preference, below it when there is no room — never on
+  // top of it. GAP clears the dot's 7px diameter and its glow.
+  const GAP = 14;
+  const above = y - tip.offsetHeight - GAP;
+  tip.style.top = `${above >= 0 ? above : y + GAP}px`;
+}
+
+function hideCursor(root) {
+  (root || document).querySelectorAll('.mk-cline, .mk-cdot, .mk-tip')
+    .forEach((n) => { n.hidden = true; });
 }
 
 // ---------- news ----------
@@ -986,7 +1127,7 @@ async function load(force = false) {
   $('app').hidden = false;
 
   renderHeader();
-  renderMarket();
+  syncMarket();
   // Places the cards for whichever page is showing, then renders News and —
   // last on purpose — the calendar. The month grid measures its own box to
   // decide how many chips fit in a day cell, so the panels that share the
@@ -1088,6 +1229,24 @@ new ResizeObserver(() => {
   if (!$('mon-grid').clientHeight) return;
   if (chipCapacity() !== LAST_CAPACITY) renderCalendar();
 }).observe($('mon-grid'));
+
+// Delegated from elements that are never replaced. #market-range lives in the
+// markup and #market only has its contents rewritten, so these bind once —
+// per-row handlers would be rebound on every render and every range switch.
+$('market-range').addEventListener('click', (e) => {
+  const btn = e.target.closest('.vt');
+  if (btn) loadMarketRange(btn.dataset.range);
+});
+
+$('market').addEventListener('pointermove', (e) => {
+  const chart = e.target.closest('.mk-chart');
+  if (chart) moveCursor(chart, e.clientX);
+});
+
+// pointerleave rather than pointerout: pointerout fires when the pointer
+// crosses onto a child of the chart, which would blink the readout off every
+// time it passed over its own cursor dot.
+$('market').addEventListener('pointerleave', () => hideCursor($('market')));
 
 // Keep a window left open on a second screen current.
 setInterval(() => load(true), 5 * 60 * 1000);

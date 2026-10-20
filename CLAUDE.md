@@ -462,6 +462,34 @@ Things that are load-bearing, all measured against the live endpoint:
   row so a typo in `MARKET_SYMBOLS` is visible rather than silently absent.
   Only an all-symbols failure throws.
 
+**Timeline switching is a refetch, not a reslice** — a year of daily bars is
+not contained in a month of them. `GET /api/markets?range=` serves it on
+demand, the same rule mail bodies follow: pre-fetching five ranges for three
+symbols would be fifteen upstream calls per refresh to show one. The client
+chooses a *range*, never a symbol — the list comes from `marketSymbols` — and
+the range only selects a key in `RANGES`, so neither can steer the upstream
+URL. `RANGES` and the client's `MARKET_RANGES` must stay in step.
+
+`MARKET_VIEW` is what is on screen, held separately from `PAYLOAD.markets`.
+That separation is the whole reason the five-minute background refresh does not
+yank you back to 1M while you are reading the year; `syncMarket()` refetches
+the chosen range instead. The choice persists in `localStorage`, like the
+calendar's month/week.
+
+**Hover maths measures the element's box, never viewBox units.**
+`preserveAspectRatio="none"` stretches the two axes by different factors, so an
+SVG-space coordinate lands in the wrong place on screen. `sparkBounds()` is the
+single definition of the value→position mapping and the cursor reads it back
+out, which is what puts the dot *on* the line — verified at 0.01px across five
+probe positions including both edges, rather than eyeballed.
+
+Two things only a screenshot caught. The readout is positioned from script and
+flips below the dot near the top of the chart: pinned to the chart's top edge
+it covered the very point it described, which only showed up when a probe
+happened to land on QQQM's June peak. And points are filtered **in pairs with
+their timestamps** — dropping a close without its time slides every later point
+onto the wrong date, a bug invisible until you hover.
+
 Rows use `flex: 1` with a `min-height` floor so three symbols fill a panel that
 spans both grid rows, while more symbols hit the floor and scroll instead of
 compressing. `preserveAspectRatio="none"` is what lets the SVG grow with its

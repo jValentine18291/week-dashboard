@@ -14,7 +14,7 @@ const { fetchCalendarEvents } = require('./lib/calendar');
 const { streamChat, DEFAULT_BASE_URL } = require('./lib/chat');
 const { fetchNews } = require('./lib/news');
 const { fetchMail, fetchBody } = require('./lib/gmail');
-const { fetchMarkets } = require('./lib/markets');
+const { fetchMarkets, RANGES, DEFAULT_RANGE } = require('./lib/markets');
 const week = require('./lib/week');
 
 const app = express();
@@ -384,6 +384,27 @@ app.post('/api/chat', requireAuth, async (req, res) => {
 // One message body, fetched only when the user opens it. Bodies are never in
 // the dashboard payload: they should not sit in the browser unasked, and they
 // would bloat a response that refreshes every sixty seconds.
+// Timeline switching, fetched on demand rather than bundled into the dashboard
+// payload — the same rule the mail bodies follow. Pre-fetching five ranges for
+// three symbols would be fifteen upstream calls per refresh to show one.
+//
+// The client chooses a range, never a symbol: the list comes from
+// marketSymbols, so this cannot be driven into fetching something the server
+// was not configured for. The range itself only selects a key in RANGES; it is
+// never interpolated into the upstream URL.
+app.get('/api/markets', requireAuth, async (req, res) => {
+  const range = String(req.query.range || DEFAULT_RANGE);
+  if (!Object.prototype.hasOwnProperty.call(RANGES, range)) {
+    return res.status(400).json({ error: 'Unknown range.' });
+  }
+  try {
+    res.json({ range, data: await fetchMarkets(marketSymbols, range) });
+  } catch (err) {
+    console.error('Markets failed:', err.message);
+    res.status(502).json({ error: 'Could not load quotes.' });
+  }
+});
+
 app.get('/api/mail/:id', requireAuth, async (req, res) => {
   if (!gmailConfig.refreshToken) {
     return res.status(503).json({ error: 'Mail is not connected.' });

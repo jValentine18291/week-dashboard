@@ -925,17 +925,91 @@ button:focus-visible,
 
 /* Stroke colour comes from `currentColor`, which the direction class sets, so
    the fill gradient tracks it without a second declaration. */
+/* The hover surface. Position context for the crosshair and readout, and the
+   element the pointer maths measures — not the SVG, whose viewBox units are
+   stretched by preserveAspectRatio="none" and so do not match screen pixels. */
+.mk-chart {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 42px;
+  display: flex;
+  cursor: crosshair;
+}
+
 /* preserveAspectRatio="none" on the SVG means it takes whatever box it is
    given, so the chart grows with the row instead of sitting in a fixed strip. */
 .mk-spark {
   width: 100%;
-  flex: 1 1 auto;
-  min-height: 42px;
+  height: 100%;
   display: block;
   overflow: visible;
   filter: drop-shadow(0 0 6px currentColor);
   opacity: .9;
 }
+
+/* Crosshair and dot inherit the chart's trend colour through currentColor, so
+   they never disagree with the line they are sitting on. */
+.mk-cline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: currentColor;
+  opacity: .5;
+  pointer-events: none;
+}
+
+.mk-cdot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 2px currentColor, 0 0 10px currentColor;
+  pointer-events: none;
+}
+
+/* Square, like every other surface here, and never an event target — a tooltip
+   that can be hovered sits between the pointer and the chart it describes. */
+/* `top` is set from script, not here: the readout follows the dot so your eye
+   does not have to travel, and flips below it near the top of the chart. Pinned
+   to the chart's top edge instead, it covered the very point it describes
+   whenever that point was high in the range — QQQM's June peak, in the capture
+   that caught this. */
+.mk-tip {
+  position: absolute;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 8px;
+  background: rgba(2, 8, 18, .94);
+  border: 1px solid var(--border-on);
+  box-shadow: var(--glow-soft);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.mk-tip b {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.mk-tip span {
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* A range switch is a network round trip. Dimming says so without moving
+   anything, so the panel does not jump while it waits. */
+.market-list.is-loading { opacity: .45; }
 
 .mk-foot {
   display: flex;
